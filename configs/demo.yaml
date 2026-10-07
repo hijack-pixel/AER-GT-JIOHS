@@ -1,0 +1,22 @@
+base_config: full_model.yaml
+
+project:
+  seed: 42
+  output_dir: outputs/demo
+
+data:
+  pretrain_dir: data/demo/pretrain_con1_con2
+  labeled_dir: data/demo/labeled_epilepsy
+
+training:
+  num_folds: 3
+  pretrain_epochs: 1
+  finetune_epochs: 1
+  pretrain_batch_size: 16
+  finetune_batch_size: 16
+  max_samples_for_scaler: 200
+
+hardware:
+  num_workers: 0
+  deterministic: true
+

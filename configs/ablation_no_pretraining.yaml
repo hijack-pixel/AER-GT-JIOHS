@@ -1,0 +1,10 @@
+base_config: full_model.yaml
+
+project:
+  output_dir: outputs/ablation_no_pretraining
+
+ablation:
+  use_pretraining: false
+  use_aer_regularization: true
+  use_topology_guided_aggregation: true
+

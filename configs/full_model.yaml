@@ -1,0 +1,49 @@
+project:
+  name: AER-GT
+  seed: 42
+  output_dir: outputs/full_model
+
+data:
+  pretrain_dir: data/private/pretrain_con1_con2
+  labeled_dir: data/private/labeled_epilepsy
+  use_abs_adjacency: true
+
+model:
+  num_nodes: 22
+  in_channels: 6
+  num_classes: 3
+  class_names: [Baseline, Seizure, Recovery]
+  hidden_dim: 128
+  num_heads: 4
+  num_layers: 2
+  transformer_dropout: 0.30
+  attention_temperature: 1.5
+  attention_dropout: 0.10
+  add_self_loop_in_norm: true
+
+training:
+  num_folds: 5
+  pretrain_epochs: 20
+  finetune_epochs: 100
+  pretrain_lr: 0.001
+  finetune_lr: 0.002
+  weight_decay: 0.005
+  pretrain_batch_size: 256
+  finetune_batch_size: 128
+  mask_ratio: 0.20
+  max_grad_norm: 5.0
+  aer_lambda: 0.02
+  max_samples_for_scaler: 5000
+
+hardware:
+  device: auto
+  amp: true
+  tf32: true
+  deterministic: true
+  num_workers: 4
+  pin_memory: true
+
+ablation:
+  use_pretraining: true
+  use_aer_regularization: true
+  use_topology_guided_aggregation: true

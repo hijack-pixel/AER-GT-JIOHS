@@ -1,0 +1,8 @@
+base_config: full_model.yaml
+
+project:
+  output_dir: outputs/paper_trained_inference
+
+artifacts:
+  artifact_dir: model_artifacts/paper_trained
+

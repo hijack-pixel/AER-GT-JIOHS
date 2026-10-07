@@ -1,0 +1,33 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Private data and derived artifacts are intentionally excluded.
+data/private/
+data/**/*.mat
+outputs/*
+!outputs/.gitkeep
+checkpoints/
+scalers/
+*.pth
+*.pt
+*.pkl
+
+# Paper-trained artifacts are intentionally versioned when authors approve release.
+!model_artifacts/
+!model_artifacts/**/
+!model_artifacts/paper_trained/checkpoints/*.pth
+!model_artifacts/paper_trained/scalers/*.pkl
+!model_artifacts/paper_trained/*.json
+!model_artifacts/paper_trained/README.md
+
+# Local/editor files.
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

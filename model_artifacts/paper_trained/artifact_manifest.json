@@ -1,0 +1,29 @@
+﻿{
+  "artifact_set": "paper_trained_aergt_full_model",
+  "description": "Fold-wise paper-trained AER-GT model checkpoints, pretrained checkpoints, and scalers.",
+  "model": {
+    "num_nodes": 22,
+    "in_channels": 6,
+    "num_classes": 3,
+    "class_names": [
+      "Baseline",
+      "Seizure",
+      "Recovery"
+    ],
+    "hidden_dim": 128,
+    "num_heads": 4,
+    "num_layers": 2,
+    "transformer_dropout": 0.3,
+    "attention_temperature": 1.5,
+    "attention_dropout": 0.1,
+    "aer_lambda": 0.02
+  },
+  "training": {
+    "num_folds": 5,
+    "pretrain_epochs": 20,
+    "finetune_epochs": 100,
+    "pretrain_data": "NB1+NB2 (normative baseline) saline-control graph samples",
+    "labeled_data": "Mouse 1–Mouse 5 epilepsy graph samples"
+  },
+  "files": 16
+}
