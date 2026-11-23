@@ -2,7 +2,7 @@
 
 This repository contains the source code required to train and evaluate the AER-GT model described in the manuscript, including subject-level cross-validation, inference, metrics, and ablation configurations. It also includes fold-wise paper-trained model checkpoints and scalers under `model_artifacts/paper_trained/` for inference when the private processed dataset is available.
 
-The complete raw widefield IOS recordings and the full processed graph-sample dataset are not included in the public repository because they contain private animal experimental data managed by the authors' institution. Access to the full dataset may be requested from the corresponding authors, subject to institutional approval and reasonable data-use conditions.
+The complete raw widefield IOS recordings and the full processed graph-sample dataset are not included in the public repository because they contain private animal experimental data managed by the authors' institution. The original IOS recordings and the full processed dataset are available from the corresponding author upon reasonable request (expected response time: within 30 days; a data-use agreement may be required).
 
 To support code verification, the repository includes a script for generating a small synthetic demo dataset:
 
