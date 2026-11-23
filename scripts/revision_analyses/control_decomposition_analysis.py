@@ -25,8 +25,10 @@ Expected input schema (example paths; produce with
 
     --control-dir   control .mat AERT_Sample windows (Label = -1),
                     filenames ``<MouseID>_<recording>_Win<k>.mat``
-    --predictions   per-window CSV with columns
-                    file, pred_class, p_baseline, p_seizure, p_recovery
+    --predictions   control_window_predictions.csv written by
+                    scripts/run_control_inference.py (columns mouse_id,
+                    source_file, window_index, p_baseline, p_seizure,
+                    p_recovery, pred_class)
     --labeled-dir   labeled ictal .mat windows for the deviation reference
     --meta          CSV with columns recording, t_post_inj_min  (per animal)
 
