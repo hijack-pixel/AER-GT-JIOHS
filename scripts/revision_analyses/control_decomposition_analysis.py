@@ -104,7 +104,7 @@ def main() -> None:
 
     control = load_samples(args.control_dir, labeled=False, num_nodes=22,
                            in_channels=6, use_abs_adj=False)
-    pmap = {Path(r.file).stem: r for _, r in preds.iterrows()}
+    pmap = {Path(r.source_file).stem: r for _, r in preds.iterrows()}
 
     # ---------- (a) time decomposition ----------
     groups: dict[tuple, dict] = defaultdict(
@@ -114,6 +114,7 @@ def main() -> None:
         if key not in pmap:
             continue
         row = pmap[key]
+        rec = row.mouse_id if hasattr(row, "mouse_id") else s.mouse_id
         rec = f"{s.mouse_id}_{s.original_file}" if s.original_file else key
         g = groups[(s.mouse_id, rec)]
         g["n"] += 1
