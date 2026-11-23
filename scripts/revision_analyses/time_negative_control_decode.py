@@ -31,7 +31,7 @@ Usage:
     python scripts/revision_analyses/time_negative_control_decode.py \
         --config configs/full_model.yaml
 
-Inputs (from the config, private placeholders):
+Inputs (from the config; point at your private data):
     data/private/labeled_epilepsy/   labeled window-level .mat samples
 
 Outputs:

@@ -5,9 +5,7 @@ AERT_timeline_states_v3.py   (NEW — replaces v2 for the revision letter)
 Timeline of the FIVE ictal-transition animals, drawn from the TRAINING-DATASET
 per-recording labels (AERT_Dataset_for_1_4_5_8_9, 45 recordings = 429 B +
 462 S + 594 R = 1485 windows), i.e. the exact selection behind every number
-in Table 1 and the letter's per-animal table.  Differs from v2, which used
-the full on-disk recording schedule (46 sessions incl. Mouse_1_3_5h and the
-six Mouse_4_2_5h parts, none of which entered training).
+in Table 1 and the letter's per-animal table.  Differs from the earlier schedule-based variant, which drew | the full on-disk recording list (46 sessions) rather than the 45 | recordings that entered training.
 
 Per-animal schedules (minutes post-injection; B/S/R = state label of the
 whole recording, 33 windows each):
@@ -20,7 +18,7 @@ whole recording, 33 windows each):
 Probe annotations at 30 / 60 min are unchanged from v2 (verified against the
 training labels: 30 min -> 4 B + 1 S; 60 min -> 4 S + 1 R).
 
-Output (NEW): E:\\paper\\AERT\\AERT_timeline_states_v3\\timeline_states.png / .pdf
+Output (NEW): outputs/timeline_states.png / .pdf
 """
 import os
 import matplotlib
@@ -28,7 +26,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, Patch
 
-OUT = r"E:\paper\AERT\AERT_timeline_states_v3"
+OUT = "outputs/state_timeline"      # adjust to your output directory
 os.makedirs(OUT, exist_ok=True)
 
 # --- training-dataset per-recording labels (time in min, state) ---

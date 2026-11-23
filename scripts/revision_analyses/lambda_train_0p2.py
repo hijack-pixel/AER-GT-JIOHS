@@ -30,8 +30,8 @@ from sklearn.preprocessing import StandardScaler
 PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 PIPELINE_DIR = os.path.dirname(PACKAGE_DIR)
 
-PRETRAIN_PATH = r"F:\mcg\Pretrain_Dataset_CON1_CON2"
-LABELED_PATH = r"F:\mcg\AERT_Dataset_for_1_4_5_8_9"
+PRETRAIN_PATH = "data/private/pretrain_con1_con2"   # adjust to your pretraining dataset
+LABELED_PATH = "data/private/labeled_epilepsy"   # adjust to your labeled dataset
 OUTPUT_DIR = os.path.join(PIPELINE_DIR, "aer_gft_cv_outputs_split_lambda0p2")
 
 SEED = 42

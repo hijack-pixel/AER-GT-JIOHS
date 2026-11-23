@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-v2_r32_segment_sensitivity.py  (NEW, paper-v2-add)
+Segment-position sensitivity analysis (revision).
 
 R3.2: segment-position sensitivity of the Fig. 4 state-characterization stats.
 
@@ -19,8 +19,8 @@ network deviation 1 - r(A, baseline template), template = mean adjacency of
 the animal's baseline windows at the SAME block positions (mirrors the
 paper's animal-own-baseline-template design).
 
-Input (read-only): E:\\paper\\data\\AERT_Dataset_FiveMice_Rebuilt\\*.mat
-Output -> E:\\paper\\paper-v2-add\\R3.2_segment\\
+Input (read-only): outputs/AERT_Dataset_FiveMice_Rebuilt\\*.mat
+Output -> outputs/R3.2_segment\\
 """
 import os
 import glob
@@ -35,7 +35,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DS = r"E:\paper\data\AERT_Dataset_FiveMice_Rebuilt"
+DS = r"outputs/AERT_Dataset_FiveMice_Rebuilt"
 STATE = {0: "Baseline", 1: "Seizure", 2: "Recovery"}
 BLK = 5          # windows per 20-s segment
 NWIN = 33        # windows per recording

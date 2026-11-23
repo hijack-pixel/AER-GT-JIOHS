@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-v2_r35a_rank_correlation.py  (NEW, paper-v2-add)
+Readout-masking rank correlation (revision).
 
 R3.5a: Spearman rank correlation between the recovery-class readout ranking
 (Fig. 7a, all 22 ROIs) and the ROI-masking Recovery-F1 drop ranking
@@ -8,9 +8,9 @@ R3.5a: Spearman rank correlation between the recovery-class readout ranking
 sub-analysis and a fold-level stability check on the masking side.
 
 Inputs (existing, read-only):
-  E:\\paper\\AERT\\AERT_cv_outputs_split\\roi_contribution_data.csv        (readout, 22 ROIs)
-  E:\\paper\\AERT\\AERT_cv_outputs_split\\recovery_f1_drop_pp_data.csv     (masking drop, 22 ROIs)
-Outputs -> E:\\paper\\paper-v2-add\\R3.5a_output\\
+  outputs/roi_contribution_data.csv        (readout, 22 ROIs)
+  outputs/recovery_f1_drop_pp_data.csv     (masking drop, 22 ROIs)
+Outputs -> outputs/R3.5a_output\\
 """
 import os
 import numpy as np
@@ -24,7 +24,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "R3.5a_output")
 os.makedirs(OUT, exist_ok=True)
 
-CV = r"E:\paper\AERT\AERT_cv_outputs_split"
+CV = "outputs/full_model"          # adjust to your run directory
 readout = pd.read_csv(os.path.join(CV, "roi_contribution_data.csv"))[["roi", "mean"]].rename(
     columns={"mean": "readout_mean"})
 masking = pd.read_csv(os.path.join(CV, "recovery_f1_drop_pp_data.csv"))[["roi", "mean", "points"]].rename(

@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-v2_r22a_per_animal.py  (NEW, paper-v2-add)
+Per-animal performance analysis (revision).
 
 R2.2a / R3-minor5: per-animal (per held-out fold) performance table for AER-GT,
 animal-level 95% CIs, and the decomposition explaining the large Baseline-F1
 SD (0.080). Display uses the manuscript's renumbered IDs (1->1, 4->2, 5->3,
 8->4, 9->5); internal data IDs unchanged.
 
-Input : E:\\paper\\AERT\\AERT_cv_outputs_split\\fold_metrics.csv
-Output-> E:\\paper\\paper-v2-add\\R2.2_per_animal\\
+Input : outputs/fold_metrics.csv
+Output-> outputs/R2.2_per_animal\\
 """
 import os
 import numpy as np
@@ -16,7 +16,7 @@ import pandas as pd
 from scipy import stats as sps
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-CV = r"E:\paper\AERT\AERT_cv_outputs_split"
+CV = "outputs/full_model"          # adjust to your run directory
 REMAP = {"Mouse 1": "Mouse 1", "Mouse 4": "Mouse 2", "Mouse 5": "Mouse 3",
          "Mouse 8": "Mouse 4", "Mouse 9": "Mouse 5"}
 

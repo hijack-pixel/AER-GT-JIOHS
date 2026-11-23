@@ -20,7 +20,7 @@ Method (revised manuscript Secs. 2.3 and 2.9):
     control->baseline) and compared against ictal recovery and ictal
     baseline windows with Mann-Whitney U tests.
 
-Expected input schema (placeholders; produce with
+Expected input schema (example paths; produce with
 ``scripts/run_control_inference.py`` and the labeled private dataset):
 
     --control-dir   control .mat AERT_Sample windows (Label = -1),

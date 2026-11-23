@@ -24,9 +24,11 @@ Each script is self-documented and maps to the reviewer comment it answers.
   The scripts consume the processed window-level outputs of the main
   pipeline (`train_full_model.py` / `run_inference.py`) and aggregate
   result CSVs produced by the corresponding runs.
-- **Paths**: scripts were executed in the authors' analysis environment and
-  reference absolute paths of that environment (documented in each header).
-  Adjust the input roots to your local layout to reproduce the analyses.
+- **Paths**: input/output locations are declared at the top of each script
+  (or via command-line arguments) as repository-relative placeholders such
+  as ``outputs/full_model`` and ``data/private/...``; adjust them to your
+  local run layout to reproduce the analyses. No absolute or private paths
+  are versioned.
 - **Time negative control**: the early/late pseudo-class decoding itself uses
   the identical two-stage pipeline with early/late baseline pseudo-labels
   (revised manuscript Sec. 2.9); `time_negative_control_figures.py` renders

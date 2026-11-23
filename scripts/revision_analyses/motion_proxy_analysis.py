@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-v2_r23_motion.py  (NEW, paper-v2-add)
+Motion-proxy analysis (revision).
 
 Experiment 9 (R2.3-alternative + R3.7): locomotion-proxy analyses linking the
 per-window frame-difference motion index to decoding outputs.
@@ -14,9 +14,9 @@ per-window frame-difference motion index to decoding outputs.
   (d) motion as a predictor of the predicted label within the B/R subset (AUC).
 
 Inputs (read-only):
-  AERT_cv_outputs_split\\oof_predictions.csv                      (1485 rows)
+  outputs/full_model/oof_predictions.csv                      (1485 rows)
   AERT_motion_quality_five_mice\\per_window_motion_five_mice.csv  (1518 rows; inner join -> 1485)
-Output -> E:\\paper\\paper-v2-add\\R2.3_motion\\
+Output -> outputs/R2.3_motion\\
 """
 import os
 import re
@@ -30,13 +30,13 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OOF = r"E:\paper\AERT\AERT_cv_outputs_split\oof_predictions.csv"
-MOT = r"E:\paper\AERT\AERT_motion_quality_five_mice\per_window_motion_five_mice.csv"
+OOF = "outputs/full_model/oof_predictions.csv"      # adjust to your run directory
+MOT = "outputs/motion_quality/per_window_motion.csv"   # adjust to your motion-quality output
 
 oof = pd.read_csv(OOF)
 mot = pd.read_csv(MOT)
 
-# ---- join keys from oof source_file: "...\\Mouse_9_10min_tif_Win1.mat" ----
+# ---- join keys from oof source_file: "<MouseID>_<recording>_Win<k>.mat" ----
 pat = re.compile(r"Mouse_(\d+)_(.+)_Win(\d+)\.mat$")
 parsed = oof["source_file"].str.extract(pat)
 oof["mouse_num"] = parsed[0].astype(int)
@@ -46,7 +46,9 @@ def fkey(s):
     # normalize across file-alias conventions: strip state/batch suffixes, then
     # collapse everything except [a-z0-9]; finally fold "3h-1" style onto "3h"
     t = str(s).lower()
-    t = t.replace("癫痫发作", "").replace("seizure", "").replace("transfer", "")
+    # strip annotation tokens occasionally present in recording filenames
+    for _tok in ("seizure", "transfer", "癫痫发作"):
+        t = t.replace(_tok, "")
     t = re.sub(r"[^a-z0-9]", "", t)
     return re.sub(r"(h)1$", r"\1", t)
 
