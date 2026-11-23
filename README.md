@@ -36,6 +36,7 @@ Manuscript-section-to-code mapping (revised manuscript):
 configs/                  YAML configs for full model, demo, and ablations
 src/aergt/                Python package for data loading, model, training, and evaluation
 scripts/                  Command-line entry points
+scripts/revision_analyses/  Reviewer-requested revision analyses (per-animal performance, motion proxy, segment sensitivity, time negative control, lambda sensitivity, seed stability, state timeline)
 preprocess/matlab/        MATLAB raw TIFF-to-graph preprocessing pipeline
 preprocess/fig4/          MATLAB Fig.4 IOS state-analysis metric pipeline
 data/demo/                Synthetic demo data location
