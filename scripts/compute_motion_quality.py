@@ -1,47 +1,53 @@
 """Frame-level motion and stability quantification (Sec. 2.10 / Sec. 3.5).
 
-Implements exactly the computation described in the manuscript:
+For every recording named in the out-of-fold predictions of a run (the window
+with index k covers frames (k - 1) * 40 + 1 to (k - 1) * 40 + 200, i.e. 20 s at
+10 Hz with the 4-s stride of Sec. 2.2) the raw frames are read and the two
+consecutive-frame quantities are computed for every pair of neighbouring frames
+of the recording:
 
-* for **each 20-s window** (200 frames, 4-s stride - identical to the
-  graph-sample windowing of Sec. 2.2) across all recordings of the five
-  ictal-transition animals:
-    - a **frame-difference motion index**: the mean absolute difference
-      between consecutive raw frames;
-    - a **consecutive-frame correlation**: the Pearson correlation between
-      adjacent raw frames;
-* per-window metrics are joined with the corresponding **out-of-fold
-  decoding predictions** to test whether movement artifacts or recording
-  instability could account for the reported state decoding (e.g. motion of
-  incorrectly vs correctly decoded windows);
-* the summary reports the minimum consecutive-frame correlation, per-animal
-  per-state median motion, and the Friedman test of the median motion index
-  across states at the animal level.
+- the frame-difference motion index: the mean absolute difference between the
+  two frames (raw A/D levels);
+- the consecutive-frame correlation: the Pearson correlation between the two
+  frames.
+
+Each window is then summarized by the mean of both quantities over its frame
+pairs (200 pairs; 199 for the first window of a recording, whose first frame
+has no predecessor).
 
 Usage:
-    python scripts/compute_motion_quality.py \
-        --recordings-dir <root of per-animal raw TIFF folders> \
-        --oof-predictions outputs/full_model/evaluation/oof_predictions.csv \
-        --out-dir outputs/motion_quality
+    python scripts/compute_motion_quality.py --config configs/full_model.yaml \
+        --recordings-dir <root with one sub-folder of raw TIFF recordings per animal>
 
-The recordings directory is expected to contain one sub-folder per animal
-(e.g. ``mouse1/``, ``mouse2/`` ...), each holding multi-frame TIFF stacks.
-All numeric outputs are written under ``outputs/`` and are not versioned.
+Animal sub-folders are matched to the dataset identifiers by comparing their
+lower-case letters and digits (``Mouse 1`` matches ``mouse1``); an explicit table
+can be given instead with ``--animal-folders`` (CSV with the columns ``mouse_id``
+and ``folder``).
+
+Requires the optional ``tifffile`` package.
+
+Output:
+    outputs/<run>/motion_quality/
+        per_window_motion.csv             mouse_id, original_file, window_index, label, metrics
+        windows_joined_predictions.csv    the same, joined with the out-of-fold predictions
+        per_animal_median_motion.csv
+        motion_quality_summary.json
 """
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import re
 import sys
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-FPS, WIN, STEP = 10, 200, 40           # identical to Sec. 2.2 windowing
+from aergt.config import load_config  # noqa: E402
 
 
 def read_tiff_stack(path: Path) -> np.ndarray:
@@ -50,8 +56,7 @@ def read_tiff_stack(path: Path) -> np.ndarray:
         import tifffile
     except ImportError as exc:  # pragma: no cover
         raise ImportError("compute_motion_quality requires 'tifffile' (pip install tifffile).") from exc
-    stack = tifffile.imread(str(path))
-    stack = np.asarray(stack, dtype=np.float32)
+    stack = np.asarray(tifffile.imread(str(path)), dtype=np.float32)
     if stack.ndim == 2:                       # single frame file
         stack = stack[None, ...]
     if stack.ndim == 4:                       # (frames, H, W, channels) -> gray
@@ -59,169 +64,117 @@ def read_tiff_stack(path: Path) -> np.ndarray:
     return stack
 
 
-def label_from_filename(name: str) -> int:
-    """Reference-state labelling rule of Sec. 2.1 (same as preprocess/matlab
-    aergt_label_from_filename.m): early post-injection recordings without
-    seizure markers are baseline; seizure-marked or mid-session recordings
-    are ictal; late recordings are recovery."""
-    f = name.lower()
-    if ("10min" in f) or ("20min" in f) or ("30min" in f):
-        return 1 if "seizure" in f else 0
-    if any(k in f for k in ("40min", "35.tif", "45.tif", "1h", "1.5h", "005")):
-        return 1
-    if any(k in f for k in ("2h", "2.5h", "3h", "3.5h", "4h", "recovery",
-                            "60min", "90min", "150min", "180", "210", "240")):
-        return 2
-    return -1
+def consecutive_frame_metrics(frames: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Per pair of neighbouring frames: mean absolute difference and Pearson correlation.
+
+    Entry t refers to the frames t and t + 1 (0-based).
+    """
+    flat = frames.reshape(frames.shape[0], -1).astype(np.float64)
+    diffs = np.abs(np.diff(flat, axis=0)).mean(axis=1)
+    a, b = flat[:-1], flat[1:]
+    a = a - a.mean(axis=1, keepdims=True)
+    b = b - b.mean(axis=1, keepdims=True)
+    denom = np.sqrt((a * a).sum(axis=1) * (b * b).sum(axis=1))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        corrs = np.where(denom > 0, (a * b).sum(axis=1) / denom, np.nan)
+    return diffs, corrs
 
 
-def minutes_from_filename(name: str) -> float:
-    """Post-injection time in minutes encoded in the recording filename."""
-    m = re.match(r"(\d+(?:\.\d+)?)\s*min", name, flags=re.IGNORECASE)
-    if m:
-        return float(m.group(1))
-    m = re.match(r"(\d+(?:\.\d+)?)\s*h", name, flags=re.IGNORECASE)
-    if m:
-        return float(m.group(1)) * 60.0
-    m = re.match(r"(\d+)", name)
-    return float(m.group(1)) if m else float("nan")
+def window_metrics(diffs: np.ndarray, corrs: np.ndarray, start: int, win_frames: int) -> dict[str, float]:
+    """Means over the frame pairs of one window (start frame, 0-based), including
+    the pair that leads into the window when the window does not start the recording."""
+    lo = max(start - 1, 0)
+    hi = start + win_frames - 1
+    window_diffs, window_corrs = diffs[lo:hi], corrs[lo:hi]
+    return {"motion_diff": float(window_diffs.mean()),
+            "frame_corr": float(np.nanmean(window_corrs)),
+            "frame_corr_min": float(np.nanmin(window_corrs))}
 
 
-def window_motion_metrics(frames: np.ndarray) -> tuple[float, float]:
-    """(frame-difference motion index, median consecutive-frame correlation)
-    for one window of raw frames."""
-    flat = frames.reshape(frames.shape[0], -1)
-    diffs = np.abs(np.diff(flat, axis=0)).mean(axis=1)      # |f_{t+1} - f_t|
-    motion_index = float(diffs.mean())
-    corrs = []
-    for t in range(flat.shape[0] - 1):
-        a, b = flat[t], flat[t + 1]
-        if a.std() > 0 and b.std() > 0:
-            corrs.append(float(np.corrcoef(a, b)[0, 1]))
-    frame_corr = float(np.median(corrs)) if corrs else float("nan")
-    return motion_index, frame_corr
-
-
-def compute_all_windows(recordings_dir: Path, mouse_pattern: str = "mouse*"):
-    """Yield one row per 20-s window across all recordings of all animals."""
-    rows = []
-    for mouse_dir in sorted(recordings_dir.glob(mouse_pattern)):
-        mouse = mouse_dir.name
-        for tif in sorted(mouse_dir.glob("*.tif")):
-            stack = read_tiff_stack(tif)
-            n_frames = stack.shape[0]
-            state = label_from_filename(tif.name)
-            minutes = minutes_from_filename(tif.name)
-            win_idx = 0
-            for start in range(0, n_frames - WIN + 1, STEP):
-                motion, corr = window_motion_metrics(stack[start:start + WIN])
-                rows.append({
-                    "mouse_id": mouse,
-                    "file": tif.name,
-                    "win": win_idx,
-                    "state": state,
-                    "minutes": minutes,
-                    "motion_diff": motion,
-                    "frame_corr": corr,
-                })
-                win_idx += 1
-    return rows
-
-
-def join_with_predictions(window_rows, oof_csv: Path):
-    """Join per-window motion metrics with the out-of-fold predictions of
-    the trained model (columns: mouse_id / source_file / window_index /
-    true_label_name / pred_label_name / correct)."""
-    import pandas as pd
-
-    df = pd.DataFrame(window_rows)
-    oof = pd.read_csv(oof_csv)
-
-    def norm_mouse(s):
-        digits = re.search(r"(\d+)", str(s))
-        return int(digits.group(1)) if digits else None
-
-    def stem_of(path):
-        base = Path(str(path)).name.replace(".mat", "")
-        m = re.match(r".*?_(.+)_Win\d+$", base)
-        if not m:
-            return None
-        return re.sub(r"[^a-z0-9]", "", m.group(1).lower())
-
-    df["mouse_num"] = df["mouse_id"].map(norm_mouse)
-    oof["mouse_num"] = oof["mouse_id"].map(norm_mouse)
-    oof["stem"] = oof["source_file"].map(stem_of)
-    df["stem"] = df["file"].map(lambda f: re.sub(r"[^a-z0-9]", "", Path(f).stem.lower()))
-
-    merged = df.merge(oof, on=["mouse_num", "stem", "win"], how="inner")
-    return merged, df
-
-
-def summarize(merged, df) -> dict:
-    """Summary statistics reported in Sec. 3.5."""
-    from scipy.stats import friedmanchisquare
-
-    out = {
-        "n_recordings": int(df["file"].nunique()),
-        "n_windows": int(len(df)),
-        "min_frame_corr": float(df["frame_corr"].min()),
-        "min_frame_corr_by_state": {
-            str(k): float(v) for k, v in df.groupby("state")["frame_corr"].min().items()
-        },
-    }
-    if not merged.empty and "correct" in merged:
-        correct = merged.loc[merged["correct"].astype(bool), "motion_diff"]
-        incorrect = merged.loc[~merged["correct"].astype(bool), "motion_diff"]
-        out["error_analysis"] = {
-            "median_motion_correct": float(correct.median()),
-            "median_motion_incorrect": float(incorrect.median()),
-            "n_correct": int(len(correct)),
-            "n_incorrect": int(len(incorrect)),
-        }
-    # animal-level Friedman test on the per-animal per-state median motion
-    medians = df.groupby(["mouse_num", "state"])["motion_diff"].median().unstack()
-    medians = medians.dropna()
-    if medians.shape == (5, 3):
-        stat, p = friedmanchisquare(*[medians[c] for c in medians.columns])
-        out["friedman_motion_by_state"] = {"chi2": float(stat), "p": float(p),
-                                           "n_animals": int(len(medians))}
-        out["per_animal_median_motion"] = {
-            str(idx): {str(c): float(v) for c, v in row.items()}
-            for idx, row in medians.iterrows()
-        }
-    return out
+def folder_for(mouse_id: str, folders: list[Path]) -> Path:
+    """Sub-folder whose name differs from the identifier only in case and non-alphanumerics."""
+    key = re.sub(r"[^a-z0-9]", "", mouse_id.lower())
+    for folder in folders:
+        if re.sub(r"[^a-z0-9]", "", folder.name.lower()) == key:
+            return folder
+    raise SystemExit(f"no sub-folder of the recordings directory matches the identifier {mouse_id!r}; "
+                     "pass --animal-folders")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Motion / recording-quality metrics (Sec. 2.10).")
-    parser.add_argument("--recordings-dir", required=True,
-                        help="root folder with one sub-folder of raw TIFF stacks per animal")
-    parser.add_argument("--oof-predictions", default=str(
-        ROOT / "outputs" / "full_model" / "evaluation" / "oof_predictions.csv"))
-    parser.add_argument("--out-dir", default=str(ROOT / "outputs" / "motion_quality"))
+    parser = argparse.ArgumentParser(description="Motion and recording-quality metrics (Sec. 2.10).")
+    parser.add_argument("--config", default=str(ROOT / "configs" / "full_model.yaml"))
+    parser.add_argument("--recordings-dir", required=True, help="root folder with one sub-folder of TIFF recordings per animal")
+    parser.add_argument("--animal-folders", default="", help="CSV with the columns mouse_id and folder")
+    parser.add_argument("--win-frames", type=int, default=200)
+    parser.add_argument("--step-frames", type=int, default=40)
+    parser.add_argument("--out-dir", default="", help="default: outputs/<run>/motion_quality")
     args = parser.parse_args()
 
-    rows = compute_all_windows(Path(args.recordings_dir))
-    if not rows:
-        raise SystemExit(f"no recordings found under {args.recordings_dir}")
-    out_dir = Path(args.out_dir)
+    cfg = load_config(args.config)
+    classes = [str(name).lower() for name in cfg["model"]["class_names"]]
+    out_dir = Path(args.out_dir) if args.out_dir else ROOT / cfg["project"]["output_dir"] / "motion_quality"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    with (out_dir / "per_window_motion.csv").open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
+    oof = pd.read_csv(ROOT / cfg["project"]["output_dir"] / "evaluation" / "oof_predictions.csv")
+    oof["mouse_id"] = oof["mouse_id"].astype(str).str.strip()
+    if "original_file" not in oof.columns or oof["original_file"].isna().any() or (oof["original_file"].astype(str) == "").any():
+        raise SystemExit("the window samples carry no OriginalFile; the recordings cannot be located")
+    oof["original_file"] = oof["original_file"].astype(str)
 
-    oof_csv = Path(args.oof_predictions)
-    merged, df = (join_with_predictions(rows, oof_csv)
-                  if oof_csv.exists() else (None, __import__("pandas").DataFrame(rows)))
-    if merged is not None:
-        merged.to_csv(out_dir / "windows_joined_predictions.csv", index=False)
+    recordings_dir = Path(args.recordings_dir)
+    explicit = {}
+    if args.animal_folders:
+        table = pd.read_csv(args.animal_folders)
+        explicit = {str(mouse).strip(): folder for mouse, folder in zip(table["mouse_id"], table["folder"])}
+    folders = sorted(path for path in recordings_dir.iterdir() if path.is_dir())
 
-    summary = summarize(merged if merged is not None else df, df)
-    (out_dir / "motion_quality_summary.json").write_text(
-        json.dumps(summary, indent=2), encoding="utf-8")
-    print(json.dumps(summary, indent=2)[:800])
+    rows = []
+    cache: dict[tuple[str, str], tuple[np.ndarray, np.ndarray]] = {}
+    for row in oof.itertuples(index=False):
+        key = (row.mouse_id, row.original_file)
+        if key not in cache:
+            folder = recordings_dir / explicit[row.mouse_id] if row.mouse_id in explicit else folder_for(row.mouse_id, folders)
+            path = folder / row.original_file
+            if not path.exists():
+                raise SystemExit(f"recording not found: {path}")
+            cache[key] = consecutive_frame_metrics(read_tiff_stack(path))
+        diffs, corrs = cache[key]
+        start = (int(row.window_index) - 1) * args.step_frames
+        if start + args.win_frames > len(diffs) + 1:
+            raise SystemExit(f"window {row.window_index} of {key} exceeds the {len(diffs) + 1} frames of the recording")
+        rows.append({"mouse_id": row.mouse_id, "original_file": row.original_file, "window_index": int(row.window_index),
+                     "label": int(row.label), **window_metrics(diffs, corrs, start, args.win_frames)})
+
+    motion = pd.DataFrame(rows)
+    motion.to_csv(out_dir / "per_window_motion.csv", index=False)
+    joined = oof.merge(motion.drop(columns=["label"]), on=["mouse_id", "original_file", "window_index"], validate="one_to_one")
+    joined["state"] = [classes[int(value)] for value in joined["label"]]
+    joined["correct"] = (joined["pred"] == joined["label"]).astype(int)
+    joined.to_csv(out_dir / "windows_joined_predictions.csv", index=False)
+
+    summary: dict[str, object] = {
+        "n_recordings": int(len(cache)),
+        "n_windows": int(len(motion)),
+        "min_frame_corr": float(motion["frame_corr"].min()),
+        "min_frame_corr_min": float(motion["frame_corr_min"].min()),
+        "min_frame_corr_by_state": {classes[int(k)]: float(v) for k, v in motion.groupby("label")["frame_corr"].min().items()},
+    }
+    correct = joined.loc[joined["correct"] == 1, "motion_diff"]
+    incorrect = joined.loc[joined["correct"] == 0, "motion_diff"]
+    summary["error_analysis"] = {
+        "median_motion_correct": float(correct.median()), "n_correct": int(len(correct)),
+        "median_motion_incorrect": float(incorrect.median()) if len(incorrect) else None, "n_incorrect": int(len(incorrect)),
+    }
+    medians = motion.groupby(["mouse_id", "label"])["motion_diff"].median().unstack()
+    medians.to_csv(out_dir / "per_animal_median_motion.csv")
+    if medians.shape[1] == len(classes) and medians.shape[0] >= 3 and not medians.isna().any().any():
+        from scipy.stats import friedmanchisquare
+
+        stat, p = friedmanchisquare(*[medians[column] for column in medians.columns])
+        summary["friedman_motion_by_state"] = {"chi2": float(stat), "p": float(p), "n_animals": int(len(medians))}
+    (out_dir / "motion_quality_summary.json").write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(summary, indent=2))
     print(f"outputs -> {out_dir}")
 
 

@@ -5,7 +5,7 @@ project:
   output_dir: outputs/demo
 
 data:
-  pretrain_dir: data/demo/pretrain_con1_con2
+  pretrain_dir: data/demo/pretrain_normative_baseline
   labeled_dir: data/demo/labeled_epilepsy
 
 training:

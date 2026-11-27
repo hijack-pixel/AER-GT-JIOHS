@@ -5,7 +5,14 @@ from torch import nn
 
 
 class AERGT(nn.Module):
-    """Attention-enhanced ROI graph transformer used for IOS state decoding."""
+    """Attention-Entropy-Regularized Graph Transformer (AER-GT) used for IOS state decoding.
+
+    The encoder couples a topology-guided aggregation branch (one hop over the
+    normalized adjacency) with a global self-attention branch (Transformer
+    encoder) and a residual projection of the input features; an attention
+    readout with temperature and dropout pools the node representations, and the
+    readout distribution is regularized towards high entropy during training.
+    """
 
     def __init__(
         self,
@@ -86,6 +93,17 @@ class AERGT(nn.Module):
         else:
             node_out = h_global + residual
         return torch.nan_to_num(node_out, nan=0.0, posinf=0.0, neginf=0.0)
+
+    def encoder_attention(self, x: torch.Tensor, adj: torch.Tensor) -> list[torch.Tensor]:
+        """Self-attention weights of every encoder layer, each computed from the input
+        the layer receives in ``encode_nodes``. Intended for evaluation (model in
+        eval mode); returns one tensor of shape (batch, heads, nodes, nodes) per layer."""
+        h = self.node_embedding(x)
+        weights = []
+        for layer in self.transformer.layers:
+            weights.append(layer.self_attn(h, h, h, need_weights=True, average_attn_weights=False)[1])
+            h = layer(h)
+        return weights
 
     def attention_pool(self, node_out: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         eps = 1e-12

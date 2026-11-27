@@ -6,11 +6,11 @@ from typing import Any
 
 import numpy as np
 import torch
+from sklearn.metrics import f1_score
 
 from aergt.data.samples import GraphSample
 from aergt.data.scalers import load_standardizer
 from aergt.data.splits import subject_level_folds, subset_by_subjects
-from aergt.evaluation.metrics import classification_metrics
 from aergt.models import AERGT
 from aergt.training.runner import _model_kwargs
 
@@ -33,16 +33,25 @@ def fold_scaler(artifact_dir: str | Path, fold: int):
     return load_standardizer(Path(artifact_dir) / "scalers" / f"fold_{fold}_scaler.pkl")
 
 
+def standardize(samples, scaler) -> np.ndarray:
+    """Apply a feature scaler (fitted on the node features) to a set of samples."""
+    xs = np.stack([np.asarray(s.x, dtype=np.float64) for s in samples])
+    shape = xs.shape
+    scaled = scaler.transform(xs.reshape(-1, shape[-1])).reshape(shape)
+    return np.nan_to_num(scaled, nan=0.0, posinf=0.0, neginf=0.0).astype(np.float32)
+
+
+def tensors(samples, xs: np.ndarray, *, device: torch.device) -> tuple[torch.Tensor, torch.Tensor]:
+    x = torch.tensor(xs, dtype=torch.float32, device=device)
+    adj = torch.tensor(np.stack([np.asarray(s.adj) for s in samples]), dtype=torch.float32, device=device)
+    return x, adj
+
+
 @torch.no_grad()
 def forward_batch(model: AERGT, samples, scaler, *, device: torch.device):
     """Standardized forward pass returning (probs, per-node readout weights,
     per-pair interaction matrices)."""
-    xs = np.stack([np.asarray(s.x, dtype=np.float64) for s in samples])
-    shape = xs.shape
-    flat = scaler.transform(xs.reshape(shape[0], -1)).reshape(shape)
-    x = torch.tensor(flat, dtype=torch.float32, device=device)
-    adj = torch.tensor(np.stack([np.asarray(s.adj) for s in samples]),
-                       dtype=torch.float32, device=device)
+    x, adj = tensors(samples, standardize(samples, scaler), device=device)
     logits, alpha = model(x, adj, return_attention=True)
     probs = torch.softmax(logits, dim=1).cpu().numpy()
     alpha = alpha.detach().cpu().numpy()                       # B, N (AER readout)
@@ -52,23 +61,19 @@ def forward_batch(model: AERGT, samples, scaler, *, device: torch.device):
 
 @torch.no_grad()
 def extract_interaction_matrices(model: AERGT, x: torch.Tensor, adj: torch.Tensor) -> np.ndarray:
-    """ROI-ROI attention matrices from the global attention encoder:
-    attention weights averaged across heads, then symmetrized
-    ((A + A^T) / 2) into an undirected interaction matrix (Sec. 2.8)."""
-    node_out = model.encode_nodes(x, adj)                       # B, N, D
+    """ROI-ROI attention matrices of the global attention encoder (Sec. 2.8).
+
+    For every window, the attention weights of each self-attention layer are the
+    ones the layer receives as input in the forward pass; they are averaged
+    across heads, then symmetrized ((A + A^T) / 2) into an undirected interaction
+    matrix, and finally averaged across layers."""
+    weights = model.encoder_attention(x, adj)                 # per layer: (B, heads, N, N)
     mats = []
-    for b in range(node_out.shape[0]):
-        h = node_out[b:b + 1]                                   # 1, N, D
-        layer_attn = []
-        for layer in model.transformer.layers:
-            attn = layer.self_attn(h, h, h, need_weights=True,
-                                   average_attn_weights=False)[1]   # (1, H, N, N)
-            a = attn.mean(axis=1)[0]                                 # heads averaged -> N, N
-            layer_attn.append(a)
-        a = np.mean(layer_attn, axis=0)                              # layers averaged
-        a = (a + a.T) / 2.0                                          # symmetrized
-        mats.append(a)
-    return np.stack(mats)
+    for attn in weights:
+        a = attn.mean(dim=1)                                  # heads averaged -> (B, N, N)
+        a = (a + a.transpose(1, 2)) / 2.0                     # symmetrized
+        mats.append(a.cpu().numpy())
+    return np.mean(mats, axis=0)
 
 
 def fold_normalize(v: np.ndarray) -> np.ndarray:
@@ -78,45 +83,29 @@ def fold_normalize(v: np.ndarray) -> np.ndarray:
     return (v - v.mean()) / std if std > 0 else v - v.mean()
 
 
-def recovery_f1(samples, probs) -> float:
-    preds = probs.argmax(axis=1)
-    labels = np.asarray([s.label for s in samples])
-    onehot = np.eye(len(CLASS_NAMES))[preds]
-    return float(classification_metrics(labels, preds, onehot,
-                                        num_classes=len(CLASS_NAMES))["recovery_f1"])
-
-
 @torch.no_grad()
 def roi_masking_recovery_f1_drop(model, samples, scaler, *, device: torch.device) -> np.ndarray:
-    """Per-ROI Recovery-F1 drop (percentage points) when the ROI's node
-    features are masked (zeroed) one at a time; the fold model is reapplied
-    without retraining."""
-    base_f1 = recovery_f1_from_model(model, samples, scaler, device)
-    drops = np.zeros(len(samples[0].x))
-    for roi in range(len(samples[0].x)):
-        masked = []
-        for s in samples:
-            x = np.array(s.x, dtype=np.float64)
-            x[roi, :] = 0.0
-            masked.append(type(s)(x=x, adj=s.adj, label=s.label,
-                                  mouse_id=s.mouse_id, source_file=s.source_file,
-                                  original_file=s.original_file,
-                                  window_index=s.window_index))
-        f1 = recovery_f1_from_model(model, masked, scaler, device)
-        drops[roi] = 100.0 * (base_f1 - f1)
+    """Per-ROI Recovery-F1 drop (percentage points) when the node features of one
+    ROI are masked (set to zero in the standardized model input, as the mask
+    token of pretraining) one at a time; the fold model is reapplied without
+    retraining (Sec. 2.8)."""
+    labels = np.asarray([s.label for s in samples])
+    adjacency = np.stack([np.asarray(s.adj) for s in samples])
+    xs = standardize(samples, scaler)
+
+    def recovery_f1_of(x: np.ndarray) -> float:
+        logits = model(torch.tensor(x, dtype=torch.float32, device=device),
+                       torch.tensor(adjacency, dtype=torch.float32, device=device))
+        preds = logits.argmax(dim=1).cpu().numpy()
+        return float(f1_score(labels, preds, labels=[RECOVERY_IDX], average="macro", zero_division=0))
+
+    base_f1 = recovery_f1_of(xs)
+    drops = np.zeros(xs.shape[1])
+    for roi in range(xs.shape[1]):
+        masked = xs.copy()
+        masked[:, roi, :] = 0.0
+        drops[roi] = 100.0 * (base_f1 - recovery_f1_of(masked))
     return drops
-
-
-@torch.no_grad()
-def recovery_f1_from_model(model, samples, scaler, device) -> float:
-    xs = np.stack([np.asarray(s.x, dtype=np.float64) for s in samples])
-    shape = xs.shape
-    flat = scaler.transform(xs.reshape(shape[0], -1)).reshape(shape)
-    x = torch.tensor(flat, dtype=torch.float32, device=device)
-    adj = torch.tensor(np.stack([np.asarray(s.adj) for s in samples]),
-                       dtype=torch.float32, device=device)
-    probs = torch.softmax(model(x, adj), dim=1).cpu().numpy()
-    return recovery_f1(samples, probs)
 
 
 def run_all(oof_samples, artifact_dir: str | Path, model_kwargs: dict[str, Any],
@@ -182,8 +171,10 @@ def run_all(oof_samples, artifact_dir: str | Path, model_kwargs: dict[str, Any],
             for j in range(interaction.shape[1]):
                 if j <= i:
                     continue
-                score[i, j] = score[j, i] = abs(interaction[i, j]) * 0.5 * (
-                    mean_recovery[i] + mean_recovery[j])
+                # absolute readout-weighted interaction score: |contrast| weighted by
+                # the mean recovery-class readout of the two endpoint ROIs
+                score[i, j] = score[j, i] = abs(
+                    interaction[i, j] * 0.5 * (mean_recovery[i] + mean_recovery[j]))
         iu = np.triu_indices_from(score, k=1)
         ranked = np.argsort(score[iu])[::-1]
         keep = max(1, int(round(0.10 * len(ranked))))
@@ -203,6 +194,19 @@ def run_all(oof_samples, artifact_dir: str | Path, model_kwargs: dict[str, Any],
         "top_roi_indices": top_roi.tolist(),
         "mask_recovery_f1_drop_pp_mean": np.mean(mask_drops, axis=0).tolist(),
         "readout_contrasts_topk_mean": {k: v["top_roi_mean"] for k, v in contrasts.items()},
+        "readout_contrasts_per_roi": {k: (v["per_roi_mean"].tolist() if v["per_roi_mean"] is not None else None)
+                                      for k, v in contrasts.items()},
         "interaction_contrast": (interaction.tolist() if interaction is not None else None),
         "edges_top10pct": edges,
+        # fold-wise values behind the cross-fold means (one array per fold)
+        "per_fold": {
+            "held_out_subjects": [list(test_subjects) for _fold, _train, test_subjects in folds],
+            "readout_by_state": {name: [r[name].tolist() if name in r else None for r in readout_by_state]
+                                 for name in CLASS_NAMES},
+            "mask_recovery_f1_drop_pp": [m.tolist() for m in mask_drops],
+            "interaction_contrast_recovery_minus_baseline": [m.tolist() for m in interaction_contrast],
+            "readout_contrasts": {f"{a}_minus_{b}": [(r[a] - r[b]).tolist() if a in r and b in r else None
+                                                     for r in readout_by_state]
+                                  for a, b in (("recovery", "baseline"), ("recovery", "seizure"))},
+        },
     }

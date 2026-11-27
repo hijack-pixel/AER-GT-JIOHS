@@ -1,0 +1,6 @@
+# Seed-stability rerun: identical pipeline, random seed 2024.
+base_config: full_model.yaml
+
+project:
+  seed: 2024
+  output_dir: outputs/seed_2024

@@ -27,7 +27,7 @@ def _save_sample(path: Path, *, x: np.ndarray, adj: np.ndarray, label: int, mous
 
 def build_demo(root: Path, *, overwrite: bool) -> None:
     demo_root = root / "data" / "demo"
-    pretrain_dir = demo_root / "pretrain_con1_con2"
+    pretrain_dir = demo_root / "pretrain_normative_baseline"
     labeled_dir = demo_root / "labeled_epilepsy"
     if overwrite and demo_root.exists():
         shutil.rmtree(demo_root)
@@ -50,11 +50,11 @@ def build_demo(root: Path, *, overwrite: bool) -> None:
             adj = (adj_noise + adj_noise.T) / 2.0
             np.fill_diagonal(adj, 1.0)
             _save_sample(
-                pretrain_dir / f"CON_{mouse}_Win{window:03d}.mat",
+                pretrain_dir / f"NB_Mouse{mouse:02d}_Win{window:03d}.mat",
                 x=x,
                 adj=adj,
                 label=-1,
-                mouse_id=f"CON_{mouse}",
+                mouse_id=f"NB_Mouse{mouse:02d}",
                 window_index=window,
             )
 

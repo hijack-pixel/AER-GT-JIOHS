@@ -31,7 +31,7 @@ def test_read_aert_sample_schema(tmp_path: Path) -> None:
         "Adjacency": np.eye(22, dtype=np.float32),
         "Label": np.array([[2]], dtype=np.int32),
         "MouseID": "Mouse 1",
-        "OriginalFile": "10min.tif",
+        "OriginalFile": "recording_1.tif",
         "WindowIndex": np.array([[1]], dtype=np.int32),
     }
     scipy.io.savemat(sample_path, {"AERT_Sample": aert_sample})

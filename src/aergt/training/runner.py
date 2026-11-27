@@ -194,15 +194,25 @@ def train_from_config(cfg: dict[str, Any], *, repo_root: str | Path) -> dict[str
         in_channels=int(model_cfg["in_channels"]),
         use_abs_adj=bool(data_cfg["use_abs_adjacency"]),
     )
+    # The unlabeled pretraining samples provide the standardization parameters in
+    # every configuration (Sec. 2.6); the pretraining stage itself runs unless it
+    # is ablated.
+    pretrain_dir = repo_root / data_cfg["pretrain_dir"]
     pretrain_samples: list[GraphSample] = []
-    if ablation_cfg.get("use_pretraining", True):
+    if pretrain_dir.is_dir() and any(pretrain_dir.glob("*.mat")):
         pretrain_samples = load_samples(
-            repo_root / data_cfg["pretrain_dir"],
+            pretrain_dir,
             labeled=False,
             num_nodes=int(model_cfg["num_nodes"]),
             in_channels=int(model_cfg["in_channels"]),
             use_abs_adj=bool(data_cfg["use_abs_adjacency"]),
         )
+    use_pretraining = bool(ablation_cfg.get("use_pretraining", True))
+    if not pretrain_samples:
+        if use_pretraining:
+            print("NOTE: no pretraining samples found; pretraining is skipped and the scaler "
+                  "is fitted on the training windows.")
+        use_pretraining = False
 
     folds = subject_level_folds(labeled_samples, int(train_cfg["num_folds"]))
     history_rows: list[dict[str, object]] = []
@@ -232,7 +242,7 @@ def train_from_config(cfg: dict[str, Any], *, repo_root: str | Path) -> dict[str
         save_standardizer(standardizer, scaler_path)
 
         train_scaled = apply_scaler(train_raw, standardizer)
-        pretrain_scaled = apply_scaler(pretrain_samples, standardizer) if pretrain_samples else []
+        pretrain_scaled = apply_scaler(pretrain_samples, standardizer) if use_pretraining else []
 
         model = AERGT(**_model_kwargs(cfg)).to(device)
         amp_scaler = _make_grad_scaler(device, enabled=bool(hardware_cfg["amp"]) and device.type == "cuda")

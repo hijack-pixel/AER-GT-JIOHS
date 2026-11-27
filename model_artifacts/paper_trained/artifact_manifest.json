@@ -1,6 +1,6 @@
-﻿{
+{
   "artifact_set": "paper_trained_aergt_full_model",
-  "description": "Fold-wise paper-trained AER-GT model checkpoints, pretrained checkpoints, and scalers.",
+  "description": "Fold-wise checkpoints and feature scalers of the AER-GT full model reported in the manuscript (subject-level five-fold cross-validation, seed 42).",
   "model": {
     "num_nodes": 22,
     "in_channels": 6,
@@ -16,14 +16,103 @@
     "transformer_dropout": 0.3,
     "attention_temperature": 1.5,
     "attention_dropout": 0.1,
-    "aer_lambda": 0.02
+    "add_self_loop_in_norm": true,
+    "use_topology_guided_aggregation": true
   },
   "training": {
     "num_folds": 5,
+    "seed": 42,
     "pretrain_epochs": 20,
     "finetune_epochs": 100,
-    "pretrain_data": "NB1+NB2 (normative baseline) saline-control graph samples",
-    "labeled_data": "Mouse 1–Mouse 5 epilepsy graph samples"
+    "pretrain_lr": 0.001,
+    "finetune_lr": 0.002,
+    "weight_decay": 0.005,
+    "pretrain_batch_size": 64,
+    "finetune_batch_size": 32,
+    "mask_ratio": 0.2,
+    "max_grad_norm": 5.0,
+    "aer_lambda": 0.02,
+    "optimizer": "Adam",
+    "model_selection": "model of the final fine-tuning epoch",
+    "pretrain_data": "unlabeled normative-baseline cohort (NB1 and NB2 saline-control recordings)",
+    "labeled_data": "labeled recordings of the ictal-transition group"
   },
-  "files": 16
+  "checkpoint_format": "state dictionary (model parameters only)",
+  "files": [
+    {
+      "path": "checkpoints/fold_1_final_model.pth",
+      "bytes": 1250229,
+      "sha256": "1b95b80478622564f53a4d5227e661dfc5c76260ac0ada2fcef23ee3cfb26a6c"
+    },
+    {
+      "path": "checkpoints/fold_1_pretrained.pth",
+      "bytes": 1250181,
+      "sha256": "53461c65e7334127e98a2fbfe1ea1bfacc97e1b3f6a9111fa278386adb960f1c"
+    },
+    {
+      "path": "checkpoints/fold_2_final_model.pth",
+      "bytes": 1250229,
+      "sha256": "16f289db13b452c4a602f39930967dcac373964efa0f2a50dfa4cae3c27c1078"
+    },
+    {
+      "path": "checkpoints/fold_2_pretrained.pth",
+      "bytes": 1250181,
+      "sha256": "31e046b397ad2d8b72f21675c7f7e4bb85426782abd2084942f9c305920f2e02"
+    },
+    {
+      "path": "checkpoints/fold_3_final_model.pth",
+      "bytes": 1250229,
+      "sha256": "5c84a45f8f3b02aa9165b969ca6d5a9d1d0857f8f3aa9e6686a85ca11a45f074"
+    },
+    {
+      "path": "checkpoints/fold_3_pretrained.pth",
+      "bytes": 1250181,
+      "sha256": "22413132abfe97b00928c004c5402cd2c669767d0f3633b1ed2f2f2695cad7c4"
+    },
+    {
+      "path": "checkpoints/fold_4_final_model.pth",
+      "bytes": 1250229,
+      "sha256": "5a0504af3364e24feb94e3954d83b46c5ad5affa0f1cd5cb1009461d2cb229c4"
+    },
+    {
+      "path": "checkpoints/fold_4_pretrained.pth",
+      "bytes": 1250181,
+      "sha256": "0b923dedcfce46de042aa824be2c875dff19117e6dffd43945679f36d1486bc0"
+    },
+    {
+      "path": "checkpoints/fold_5_final_model.pth",
+      "bytes": 1250229,
+      "sha256": "96a1ec4bf944e99bfeb6070531f8c04f3aabd588cd30714b6b6367ceeec0321e"
+    },
+    {
+      "path": "checkpoints/fold_5_pretrained.pth",
+      "bytes": 1250181,
+      "sha256": "c84f9936eb6491d1f11e92fdb6eb7d2d0c7414db4a171e6b6a1a533e5bb035b2"
+    },
+    {
+      "path": "scalers/fold_1_scaler.pkl",
+      "bytes": 759,
+      "sha256": "1650af74fb20793c69bcd36d3bb4502eaeb4cda82d675c9f9d7f7cec2fe1f583"
+    },
+    {
+      "path": "scalers/fold_2_scaler.pkl",
+      "bytes": 759,
+      "sha256": "1650af74fb20793c69bcd36d3bb4502eaeb4cda82d675c9f9d7f7cec2fe1f583"
+    },
+    {
+      "path": "scalers/fold_3_scaler.pkl",
+      "bytes": 759,
+      "sha256": "1650af74fb20793c69bcd36d3bb4502eaeb4cda82d675c9f9d7f7cec2fe1f583"
+    },
+    {
+      "path": "scalers/fold_4_scaler.pkl",
+      "bytes": 759,
+      "sha256": "1650af74fb20793c69bcd36d3bb4502eaeb4cda82d675c9f9d7f7cec2fe1f583"
+    },
+    {
+      "path": "scalers/fold_5_scaler.pkl",
+      "bytes": 759,
+      "sha256": "1650af74fb20793c69bcd36d3bb4502eaeb4cda82d675c9f9d7f7cec2fe1f583"
+    }
+  ]
 }

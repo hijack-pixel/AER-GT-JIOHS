@@ -18,13 +18,26 @@ scalers/
 *.pt
 *.pkl
 
-# Paper-trained artifacts are intentionally versioned when authors approve release.
+# Paper-trained model artifacts are intentionally versioned.
 !model_artifacts/
 !model_artifacts/**/
 !model_artifacts/paper_trained/checkpoints/*.pth
 !model_artifacts/paper_trained/scalers/*.pkl
 !model_artifacts/paper_trained/*.json
 !model_artifacts/paper_trained/README.md
+
+# Raw and intermediate data files are never versioned outside outputs/.
+*.tif
+*.tiff
+*.npy
+*.npz
+*.h5
+*.hdf5
+
+# Credentials are never versioned.
+.env
+*.pem
+*.key
 
 # Local/editor files.
 .idea/

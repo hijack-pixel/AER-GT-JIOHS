@@ -1,41 +1,40 @@
 function metrics = compute_fig4_ios_state_metrics(cfg)
-%COMPUTE_FIG4_IOS_STATE_METRICS Compute IOS state traces and FC deviation.
+%COMPUTE_FIG4_IOS_STATE_METRICS Compute IOS state traces and connectivity deviation.
 %
-% The analysis follows the manuscript Fig.4 preprocessing path:
-%   - five epilepsy mice
-%   - one representative baseline, seizure, and recovery recording per mouse
-%   - first 300 frames per recording
-%   - dI/I normalization by each file's first 100 frames
-%   - frames 101:300 with a mild median filter
+% State-level characterization of Fig. 4 (Sec. 2.3). For every animal one
+% baseline-, one seizure-, and one recovery-labelled recording is read (the
+% table cfg.spec.fig4_state_recordings) and processed as the labeled pipeline
+% does: the ROIs are placed with the animal's registration landmarks, the ROI
+% time series are normalized against the first frames, and the analysis segment
+% is the 200 frames that follow the 100-frame normalization reference (frames
+% 101:300), smoothed with a three-point median filter.
 %
-% Corrections applied in response to reviewer comments:
-%   1. Window length is 200 frames = 20 s at 10 Hz, matching the manuscript
-%      (the initial release used 40 frames = 4 s).
-%   2. Functional connectivity is computed per animal and then averaged
-%      across animals (the initial release correlated the cross-animal
-%      averaged time series).
-%   3. Network deviation is evaluated at the animal level: with 20-s windows
-%      each mouse contributes exactly one observation per state.
+% Per animal and state:
+%   - signal amplitude: mean normalized intensity over the 22 ROIs;
+%   - connectivity: Pearson correlation between the ROI time series;
+%   - network deviation: 1 - r between the upper-triangle connectivity profiles
+%     of the state and of the animal's baseline segment.
+% With one 20-s segment per state, each animal contributes one observation per
+% state. Cross-animal averages of the clips are returned for display traces
+% only; group connectivity is the average of the per-animal matrices.
 
 if nargin < 1 || isempty(cfg)
     cfg = aergt_preprocess_config_template();
 end
 
 state_labels = {'Baseline', 'Seizure', 'Recovery'};
-state_files = local_fig4_state_files();
+[Mice, state_files] = local_state_recordings(cfg);
 
 fps = cfg.signal.fps;
 box_half = cfg.signal.box_half;
-fig4_win_len = 200;  % 20 s at 10 Hz (manuscript description)
-fig4_win_step = 40;  % 4 s stride; 200-frame clips give one window per state
-main_roi_idx = 15;
-deviation_metric = 'corrdist';
-
-Mice = aergt_build_paper_mouse_table(cfg);
-if numel(Mice) ~= size(state_files, 1)
-    error('compute_fig4_ios_state_metrics:MouseCountMismatch', ...
-        'Expected %d mice, got %d.', size(state_files, 1), numel(Mice));
+fig4_win_len = 200;   % 20 s at 10 Hz
+fig4_win_step = 40;   % 4-s stride; the 200-frame segment holds one window
+if isfield(cfg, 'fig4') && isfield(cfg.fig4, 'display_roi_index')
+    main_roi_idx = cfg.fig4.display_roi_index;
+else
+    main_roi_idx = 15;
 end
+deviation_metric = 'corrdist';
 
 num_mice = numel(Mice);
 num_states = numel(state_labels);
@@ -55,13 +54,12 @@ for mouse_idx = 1:num_mice
 
     base_info = imfinfo(baseline_path);
     image_size = [base_info(1).Height, base_info(1).Width];
-    roi_map = aergt_map_epilepsy_rois( ...
+    roi_map = aergt_map_rois_similarity( ...
         mouse.Coords, ...
         cfg.registration.fixed_points, ...
         cfg.registration.roi_positions, ...
         image_size, ...
-        box_half ...
-    );
+        box_half);
 
     for state_idx = 1:num_states
         file_path = fullfile(mouse.Folder, state_files{mouse_idx, state_idx});
@@ -73,7 +71,7 @@ for mouse_idx = 1:num_mice
         video = aergt_read_tiff_stack(file_path, 300);
         if size(video, 3) < 300
             error('compute_fig4_ios_state_metrics:ShortRecording', ...
-                'Fig.4 requires at least 300 frames: %s.', file_path);
+                'The analysis needs at least 300 frames: %s.', file_path);
         end
 
         roi_traces = aergt_extract_roi_timeseries(video, roi_map, box_half);
@@ -86,7 +84,7 @@ for mouse_idx = 1:num_mice
         mouse_state_trace{mouse_idx, state_idx} = mean(clip, 2, 'omitnan');
         mouse_display_trace{mouse_idx, state_idx} = mean(clip(:, main_roi_idx), 2, 'omitnan');
 
-        % Per-animal connectivity over the full (single 20-s) window
+        % Connectivity of the animal over the whole (single 20-s) segment
         mouse_adjacency{mouse_idx, state_idx} = aergt_compute_adjacency(clip);
 
         starts = 1:fig4_win_step:(size(clip, 1) - fig4_win_len + 1);
@@ -99,9 +97,8 @@ for mouse_idx = 1:num_mice
     end
 end
 
-% Cross-animal averaged clips are used for DISPLAY TRACES only.
-% Functional connectivity is computed per animal and then averaged
-% (corrected order: the initial release correlated the averaged series).
+% Cross-animal averaged clips are used for display traces only; group
+% connectivity is the average of the per-animal matrices.
 state_average_clips = cell(1, num_states);
 state_trace = cell(1, num_states);
 state_display_trace = cell(1, num_states);
@@ -115,14 +112,12 @@ for state_idx = 1:num_states
     state_display_trace{state_idx} = mean(clip(:, main_roi_idx), 2, 'omitnan');
     window_metric{state_idx} = vertcat(mouse_window_metric{:, state_idx});
 
-    % Connectivity: average of per-animal estimates (corrected)
     adjacency = mean(cat(3, mouse_adjacency{:, state_idx}), 3, 'omitnan');
     adjacency(1:size(adjacency, 1)+1:end) = 1;
     adjacency_matrices{state_idx} = adjacency;
 end
 
-% Network deviation at the animal level: with 20-s windows each mouse
-% contributes exactly one deviation value per state.
+% Network deviation at the animal level: one value per animal and state.
 mouse_network_deviation = local_mouse_network_deviation(mouse_clips, fig4_win_len, fig4_win_step, deviation_metric);
 network_deviation = cell(1, num_states);
 for state_idx = 1:num_states
@@ -155,18 +150,42 @@ metrics.Parameters = struct( ...
     'display_roi_index', main_roi_idx, ...
     'deviation_metric', deviation_metric, ...
     'connectivity_order', 'per_animal_then_average', ...
-    'deviation_unit', 'per_mouse' ...
-);
+    'deviation_unit', 'per_animal');
 end
 
-function state_files = local_fig4_state_files()
-state_files = {
-    '10min.tif',           '1.5h.tif',          '4h.tif';
-    '10min_transfer.tif',  '1h.tif',            '2.5h (6).tif';
-    '10min.tif',           '40min.tif',         '2h.tif';
-    '10min.tif',           '1h.tif',            '2h.tif';
-    '10min.tif',           '20min_seizure.tif', '180.tif'
-};
+function [Mice, state_files] = local_state_recordings(cfg)
+% One baseline, seizure, and recovery recording per animal from the Fig. 4
+% table; folders and registration landmarks come from the animal table.
+required = ["animal", "baseline_file", "seizure_file", "recovery_file"];
+T = aergt_read_spec_table(cfg.spec.fig4_state_recordings);
+missing = required(~ismember(required, string(T.Properties.VariableNames)));
+if ~isempty(missing)
+    error('compute_fig4_ios_state_metrics:MissingColumns', ...
+        '%s lacks the column(s) %s.', cfg.spec.fig4_state_recordings, strjoin(missing, ', '));
+end
+Animals = aergt_read_animal_table(cfg, 'labeled');
+
+names = strtrim(string(T.animal));
+files = [strtrim(string(T.baseline_file)), strtrim(string(T.seizure_file)), strtrim(string(T.recovery_file))];
+if any(names == "") || any(startsWith(names, "ANIMAL_ID")) || ...
+        any(files == "") || any(contains(files, "RECORDING"))
+    error('compute_fig4_ios_state_metrics:Placeholder', ...
+        '%s still contains placeholder rows.', cfg.spec.fig4_state_recordings);
+end
+
+Mice = repmat(Animals(1), 1, height(T));
+for k = 1:height(T)
+    a = find(strcmpi({Animals.Name}, names(k)), 1);
+    if isempty(a)
+        error('compute_fig4_ios_state_metrics:UnknownAnimal', ...
+            'Animal %s is not listed in %s.', names(k), cfg.spec.animals);
+    end
+    Mice(k) = Animals(a);
+end
+state_files = cell(height(T), 3);
+for state_idx = 1:3
+    state_files(:, state_idx) = cellstr(files(:, state_idx));
+end
 end
 
 function mouse_deviation = local_mouse_network_deviation(mouse_clips, win_len, win_step, deviation_metric)

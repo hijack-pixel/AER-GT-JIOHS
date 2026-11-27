@@ -4,7 +4,7 @@ project:
   output_dir: outputs/full_model
 
 data:
-  pretrain_dir: data/private/pretrain_con1_con2
+  pretrain_dir: data/private/pretrain_normative_baseline
   labeled_dir: data/private/labeled_epilepsy
   use_abs_adjacency: true
 
@@ -28,8 +28,8 @@ training:
   pretrain_lr: 0.001
   finetune_lr: 0.002
   weight_decay: 0.005
-  pretrain_batch_size: 256
-  finetune_batch_size: 128
+  pretrain_batch_size: 64
+  finetune_batch_size: 32
   mask_ratio: 0.20
   max_grad_norm: 5.0
   aer_lambda: 0.02
@@ -37,11 +37,11 @@ training:
 
 hardware:
   device: auto
-  amp: true
-  tf32: true
+  amp: false
+  tf32: false
   deterministic: true
-  num_workers: 4
-  pin_memory: true
+  num_workers: 0
+  pin_memory: false
 
 ablation:
   use_pretraining: true

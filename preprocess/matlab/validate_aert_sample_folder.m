@@ -7,7 +7,7 @@ function report = validate_aert_sample_folder(folder_path, is_labeled)
 %   AERT_Sample.NodeFeats: 22 x 6
 %   AERT_Sample.Adjacency: 22 x 22
 %   AERT_Sample.MouseID: subject identifier
-%   AERT_Sample.Label: 0/1/2 for labeled samples, -1 for pretraining controls
+%   AERT_Sample.Label: 0/1/2 for labeled samples, -1 for unlabeled samples
 
 if nargin < 2
     is_labeled = true;
@@ -49,7 +49,7 @@ for i = 1:numel(files)
             error('Labeled samples must use labels 0, 1, or 2.');
         end
         if ~is_labeled && label_value ~= -1
-            error('Pretraining control samples should use label -1.');
+            error('Unlabeled samples must use label -1.');
         end
         num_valid = num_valid + 1;
         labels(end + 1) = label_value; %#ok<AGROW>

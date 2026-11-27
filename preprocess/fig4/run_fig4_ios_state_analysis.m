@@ -1,5 +1,5 @@
 function run_fig4_ios_state_analysis(cfg)
-%RUN_FIG4_IOS_STATE_ANALYSIS Compute Fig.4 IOS state-analysis metrics.
+%RUN_FIG4_IOS_STATE_ANALYSIS Compute the IOS state-analysis metrics of Fig. 4.
 %
 % This entry writes numerical results only. Generated figures are excluded
 % from the repository and should be recreated from the saved metrics.

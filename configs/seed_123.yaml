@@ -1,0 +1,6 @@
+# Seed-stability rerun: identical pipeline, random seed 123.
+base_config: full_model.yaml
+
+project:
+  seed: 123
+  output_dir: outputs/seed_123

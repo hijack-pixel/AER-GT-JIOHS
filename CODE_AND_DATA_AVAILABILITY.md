@@ -2,7 +2,13 @@
 
 This repository contains the source code required to train and evaluate the AER-GT model described in the manuscript, including subject-level cross-validation, inference, metrics, and ablation configurations. It also includes fold-wise paper-trained model checkpoints and scalers under `model_artifacts/paper_trained/` for inference when the private processed dataset is available.
 
-The complete raw widefield IOS recordings and the full processed graph-sample dataset are not included in the public repository because they contain private animal experimental data managed by the authors' institution. The original IOS recordings and the full processed dataset are available from the corresponding author upon reasonable request (expected response time: within 30 days; a data-use agreement may be required).
+The data and code availability statement of the manuscript reads:
+
+```text
+The code, preprocessing scripts, and trained model artifacts are available at https://github.com/hijack-pixel/AER-GT-JIOHS. The original IOS recordings and the full processed dataset are available from the corresponding author upon reasonable request (expected response time: within 30 days; a data-use agreement may be required).
+```
+
+The complete raw widefield IOS recordings and the full processed graph-sample dataset are therefore not included in the public repository: they contain private animal experimental data managed by the authors' institution. Requests are directed to the corresponding author.
 
 To support code verification, the repository includes a script for generating a small synthetic demo dataset:
 

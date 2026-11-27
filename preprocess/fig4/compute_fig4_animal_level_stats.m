@@ -1,9 +1,9 @@
 function stats = compute_fig4_animal_level_stats(metrics)
-%COMPUTE_FIG4_ANIMAL_LEVEL_STATS Animal-level statistics for Fig.4 metrics.
+%COMPUTE_FIG4_ANIMAL_LEVEL_STATS Animal-level statistics for Fig. 4 metrics.
 %
-% Addresses the reviewer's request for an animal-level analysis: with 20-s
-% windows each mouse contributes exactly one observation per state, so the
-% mouse (not the window) is the independent statistical unit.
+% With one 20-s segment per state each animal contributes exactly one
+% observation per state, so the animal (not the window) is the independent
+% statistical unit.
 %
 %   Omnibus : Friedman test per metric.
 %   Pairwise: Wilcoxon signed-rank with Holm correction (family = 3 pairs).

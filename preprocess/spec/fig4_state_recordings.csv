@@ -1,0 +1,2 @@
+animal,baseline_file,seizure_file,recovery_file
+ANIMAL_ID,BASELINE_RECORDING.tif,SEIZURE_RECORDING.tif,RECOVERY_RECORDING.tif

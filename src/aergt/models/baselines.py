@@ -44,14 +44,14 @@ def vectorize_labels(samples) -> np.ndarray:
 # feature-based baselines (sklearn / xgboost)
 # --------------------------------------------------------------------------- #
 
-def make_logistic_regression():
+def make_logistic_regression(random_state: int = 42):
     """Logistic Regression baseline (multinomial)."""
     from sklearn.linear_model import LogisticRegression
 
-    return LogisticRegression(max_iter=2000, C=1.0)
+    return LogisticRegression(max_iter=2000, C=1.0, random_state=random_state)
 
 
-def make_xgboost():
+def make_xgboost(random_state: int = 42):
     """XGBoost baseline. Requires the optional ``xgboost`` dependency."""
     try:
         from xgboost import XGBClassifier
@@ -62,15 +62,16 @@ def make_xgboost():
         ) from exc
     return XGBClassifier(
         n_estimators=300, max_depth=4, learning_rate=0.1,
-        eval_metric="mlogloss", use_label_encoder=False,
+        eval_metric="mlogloss", random_state=random_state,
     )
 
 
-def make_mlp():
+def make_mlp(random_state: int = 42):
     """MLP baseline."""
     from sklearn.neural_network import MLPClassifier
 
-    return MLPClassifier(hidden_layer_sizes=(128, 64), max_iter=500, early_stopping=True)
+    return MLPClassifier(hidden_layer_sizes=(128, 64), max_iter=500, early_stopping=True,
+                         random_state=random_state)
 
 
 FEATURE_BASELINES = {
@@ -157,14 +158,17 @@ class GAT(nn.Module):
 
 class BNTBackbone(nn.Module):
     """Brain-Network-Transformer-style backbone (Kan et al., ref. 36):
-    ROI embedding + global Transformer encoder + orthonormal clustering
-    readout, used here as the self-supervised BNT baseline."""
+    ROI embedding, one aggregation step over the adjacency matrix, a global
+    Transformer encoder, and an orthonormal clustering readout. It is used here
+    as the self-supervised BNT baseline and consumes the same node-feature and
+    adjacency matrices as AER-GT."""
 
     def __init__(self, *, in_channels: int = 6, hidden_dim: int = 128,
                  num_heads: int = 4, num_clusters: int = 4,
                  transformer_dropout: float = 0.3) -> None:
         super().__init__()
         self.embedding = nn.Linear(in_channels, hidden_dim)
+        self.graph_weight = nn.Parameter(torch.tensor(0.5))
         layer = nn.TransformerEncoderLayer(
             d_model=hidden_dim, nhead=num_heads,
             dim_feedforward=4 * hidden_dim, dropout=transformer_dropout,
@@ -176,6 +180,12 @@ class BNTBackbone(nn.Module):
 
     def forward(self, x: torch.Tensor, adj: torch.Tensor):
         h = self.embedding(x)
+        # adjacency aggregation (D^(-1/2) (A + I) D^(-1/2)), blended with the node embedding
+        a = adj + torch.eye(adj.shape[-1], device=adj.device, dtype=adj.dtype)
+        deg = a.sum(dim=-1).clamp_min(1e-8).pow(-0.5)
+        adj_norm = a * deg.unsqueeze(-1) * deg.unsqueeze(-2)
+        w = torch.sigmoid(self.graph_weight)
+        h = (1.0 - w) * h + w * torch.bmm(adj_norm, h)
         h = self.encoder(h)
         basis, _ = torch.linalg.qr(self.cluster_basis.T)        # orthonormalize
         scores = torch.softmax(h @ basis, dim=-1)               # B,N,K
@@ -187,9 +197,11 @@ class SelfSupervisedWrapper(nn.Module):
     """Two-stage (self-supervised pretraining + supervised finetuning)
     wrapper shared by the self-supervised GAT and BNT baselines.
 
-    Pretraining objective: masked node-feature reconstruction, mirroring the
-    AER-GT two-stage protocol so that the only difference between the
-    self-supervised baselines and AER-GT is the backbone."""
+    Pretraining objective: masked node-feature reconstruction on the training
+    windows of a fold (their labels are not used): a fraction of the ROI nodes is
+    set to zero before the backbone, and the reconstruction of the masked nodes
+    is compared with their original features. The objective mirrors the
+    pretraining stage of AER-GT, so that the backbones are the main difference."""
 
     def __init__(self, backbone: str, *, in_channels: int = 6, num_classes: int = 3,
                  hidden_dim: int = 128) -> None:

@@ -25,7 +25,7 @@ def main() -> None:
     remove_inside_root(ROOT / "outputs" / "ablation_no_topology")
     remove_inside_root(ROOT / "outputs" / "ablation_statistics")
     remove_inside_root(ROOT / "data" / "demo" / "labeled_epilepsy")
-    remove_inside_root(ROOT / "data" / "demo" / "pretrain_con1_con2")
+    remove_inside_root(ROOT / "data" / "demo" / "pretrain_normative_baseline")
 
 
 if __name__ == "__main__":

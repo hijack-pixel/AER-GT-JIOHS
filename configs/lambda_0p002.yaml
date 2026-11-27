@@ -1,0 +1,8 @@
+# Lambda-sensitivity rerun: identical pipeline, AER coefficient 0.002.
+base_config: full_model.yaml
+
+project:
+  output_dir: outputs/lambda_0p002
+
+training:
+  aer_lambda: 0.002

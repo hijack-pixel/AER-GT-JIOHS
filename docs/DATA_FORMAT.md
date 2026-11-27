@@ -1,50 +1,55 @@
 # Processed Data Format
 
-The Python model expects one MATLAB `.mat` file per graph sample. Each file must contain a variable named `AERT_Sample`.
+The Python pipeline expects one MATLAB `.mat` file per graph sample. Each file contains a variable named `AERT_Sample`.
 
-Required fields:
+## Fields read by the pipeline
 
 - `NodeFeats`: `22 x 6` numeric matrix. Rows are ROIs and columns are the six IOS features.
-- `Adjacency`: `22 x 22` numeric functional-connectivity matrix.
-- `Label`: integer state label. Use `0` for baseline, `1` for seizure, `2` for post-ictal recovery, and `-1` for unlabeled control/pretraining samples.
-- `MouseID`: subject identifier. Subject-level cross-validation groups samples by this field.
+- `Adjacency`: `22 x 22` numeric functional-connectivity matrix (Pearson correlations; the loader takes absolute values when `data.use_abs_adjacency` is true).
+- `Label`: state label. `0` for baseline, `1` for seizure, `2` for post-ictal recovery, and `-1` for unlabeled samples (normative-baseline and pharmacological-control cohorts).
+- `MouseID`: subject identifier. Subject-level cross-validation groups the samples by this field.
+- `OriginalFile`, `WindowIndex`: recording identifier and window index (1-based). They link the out-of-fold predictions to recordings and are used by every analysis that groups windows by recording.
 
-Recommended fields:
+## Additional fields written by the exporters
 
-- `OriginalFile`: original recording filename.
-- `WindowIndex`: sliding-window index.
-- `WindowStartFrame`: first frame in the sample window.
-- `WindowEndFrame`: last frame in the sample window.
-- `FPS`: imaging frame rate.
-- `WinSec`: window duration in seconds.
-- `StepSec`: window step in seconds.
+`WindowStartFrame`, `WindowEndFrame`, `FPS`, `WinSec`, `StepSec`, `ROIMap`, and `ROI_Names` document each window; they are not used for training.
 
-Expected folder layout for the full paper pipeline:
+## Folder layout
 
 ```text
-data/private/pretrain_con1_con2/*.mat
-data/private/labeled_epilepsy/*.mat
+data/private/pretrain_normative_baseline/*.mat   unlabeled normative-baseline (NB1, NB2) samples
+data/private/labeled_epilepsy/*.mat               labeled samples of the ictal-transition recordings
+data/private/control_pharmacological/*.mat        unlabeled samples of the pharmacological controls (Sec. 2.9)
 ```
 
-Generate the full private-data processed folders from raw TIFF recordings:
+## Generating the folders
+
+The MATLAB exporters convert raw TIFF recordings into these samples. Animals, recordings, and labels are listed in the specification tables of `preprocess/spec/`:
 
 ```matlab
 addpath('preprocess/matlab')
 cfg = aergt_preprocess_config_template();
-cfg.raw.epilepsy_root = 'PATH_TO_PRIVATE_EPILEPSY_MOUSE_DATA';
-cfg.raw.control_con1_root = 'PATH_TO_PRIVATE_CON1';
-cfg.raw.control_con2_root = 'PATH_TO_PRIVATE_CON2';
+cfg.raw.epilepsy_root = 'PATH_TO_RAW_ICTAL_TRANSITION_RECORDINGS';
+cfg.raw.pretrain_root  = 'PATH_TO_RAW_NORMATIVE_BASELINE_RECORDINGS';
+cfg.raw.control_root   = 'PATH_TO_RAW_PHARMACOLOGICAL_CONTROL_RECORDINGS';
+cfg.spec.animals = 'PATH_TO/animals.csv';
+cfg.spec.recordings = 'PATH_TO/recordings.csv';
 run_full_preprocess(cfg)
 ```
 
-Validate processed folders before running the Python model:
+Validate the folders before running the Python pipeline:
 
 ```matlab
-validate_aert_sample_folder('data/private/pretrain_con1_con2', false)
+validate_aert_sample_folder('data/private/pretrain_normative_baseline', false)
+validate_aert_sample_folder('data/private/control_pharmacological', false)
 validate_aert_sample_folder('data/private/labeled_epilepsy', true)
 ```
 
-The paper configuration assumes:
+## Cohort sizes
+
+The cohort sizes and window counts are those listed in Table 1 of the manuscript; the exporters report the number of windows written for every recording, and `subject_metrics_for_stats.csv` lists the windows of each held-out animal.
+
+## Configuration assumptions
 
 - `num_nodes = 22`
 - `in_channels = 6`

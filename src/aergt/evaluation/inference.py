@@ -10,7 +10,7 @@ import torch
 from aergt.data.samples import apply_scaler, load_samples, make_loader
 from aergt.data.scalers import load_standardizer
 from aergt.data.splits import subject_level_folds, subset_by_subjects
-from aergt.evaluation.metrics import classification_metrics, mean_std_ci
+from aergt.evaluation.metrics import METRIC_NAMES, classification_metrics, mean_std_ci
 from aergt.models import AERGT
 from aergt.training.runner import _model_kwargs
 from aergt.utils.runtime import configure_torch, resolve_device, set_seed, write_json
@@ -174,7 +174,7 @@ def evaluate_from_config(cfg: dict[str, Any], *, repo_root: str | Path) -> dict[
             window_index=np.asarray(metadata["window_index"], dtype=object),
         )
 
-    metric_names = ["accuracy", "macro_auc", "macro_f1", "baseline_f1", "seizure_f1", "recovery_f1"]
+    metric_names = METRIC_NAMES
     summary_metrics = {
         metric: mean_std_ci([float(row[metric]) for row in fold_rows if metric in row])
         for metric in metric_names
