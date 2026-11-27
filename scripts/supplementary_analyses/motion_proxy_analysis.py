@@ -10,9 +10,10 @@ outputs of a run:
 (b) median motion of correctly and incorrectly decoded windows by true state,
     and the state composition of the incorrectly decoded windows;
 (c) baseline-versus-recovery decoding accuracy by motion quintile, including
-    the lowest-motion quintile, and the quintile-matched accuracy (the mean
-    of the class accuracies over quintiles) against the unmatched pooled
-    accuracy.
+    the lowest-motion quintile, and a motion-stratified balanced accuracy (the
+    mean of the two class accuracies within each quintile, averaged over the
+    five quintiles with equal weight) alongside the pooled baseline-versus-
+    recovery accuracy.
 
 The motion index is a proxy for image-plane displacement; it is not a measure
 of locomotion, and the analyses describe association at this sample size.
@@ -142,8 +143,9 @@ def main() -> None:
                      f"  pooled={sub['correct'].mean():.3f}")
     quintiles = pd.DataFrame(rows)
     quintiles.to_csv(out / "quintile_accuracy.csv", index=False)
-    matched = float(np.mean(quintiles[["accuracy_baseline", "accuracy_recovery"]].to_numpy()))
-    lines.append(f"  motion-matched (quintile-averaged) accuracy: {matched:.3f}; unmatched pooled accuracy: {subset['correct'].mean():.3f}")
+    stratified = float(np.mean(quintiles[["accuracy_baseline", "accuracy_recovery"]].to_numpy()))
+    lines.append(f"  motion-stratified balanced accuracy: {stratified:.3f}; pooled baseline-versus-recovery accuracy: "
+                 f"{subset['correct'].mean():.3f}")
 
     (out / "summary.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
