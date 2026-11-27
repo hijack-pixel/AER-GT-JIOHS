@@ -15,15 +15,19 @@ five windows has 29 possible start positions in a 33-window recording; with
 instead. Three computations are run on the recordings of the labeled dataset:
 
 (a) full-recording aggregation (all windows of each recording);
-(b) randomly positioned blocks (``--draws`` draws);
+(b) ``--draws`` random draws of one common block start position; because (c)
+    covers every start position, the draws resample the results of (c);
 (c) a systematic sweep over every block start position.
 
-Per animal and state, the amplitude is the mean of the first node feature (the
-within-window mean of the normalized ROI signal) and the network deviation is
-1 - r between the upper-triangle profiles of the mean correlation matrix of the
-block and the animal's baseline template, built from the baseline recordings of
-the same animal at the same block position. The state effect of each statistic
-is tested with a Friedman test over animals; Kendall's W is reported.
+Per recording and state, the amplitude is the mean of the first node feature
+(the within-window mean of the normalized ROI signal) and the correlation
+profile is the mean upper triangle of the block windows. Per animal and state,
+both are then averaged over the recordings of that state. The network
+deviation is 1 - r between the upper-triangle profiles of the state's mean
+correlation matrix and the animal's baseline template, which is the mean
+correlation profile of the animal's baseline recordings at the same block
+position. The state effect of each statistic is tested with a Friedman test
+over animals; Kendall's W is reported.
 
 Usage:
     python scripts/supplementary_analyses/segment_position_sensitivity.py \

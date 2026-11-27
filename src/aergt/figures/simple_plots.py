@@ -240,9 +240,24 @@ def plot_control_evaluation(run_dir: str | Path, *, recording: str = "") -> Path
 # Fig. 7
 # --------------------------------------------------------------------------- #
 
+# Label and position of the 22 cortical ROIs on the cortical-surface schematic:
+# (node index, label, x, y). The order is the node order of the preprocessed samples.
+ROI_LAYOUT = (
+    (1, "M2L", 116, 86), (2, "BCR", 233, 165), (3, "RSL", 124, 183), (4, "MFR", 190, 113),
+    (5, "BCL", 53, 165), (6, "HLR", 190, 145), (7, "MBL", 77, 95), (8, "V2R", 187, 209),
+    (9, "FLL", 75, 128), (10, "PTR", 191, 165), (11, "HLL", 96, 145), (12, "M2R", 170, 86),
+    (13, "PTL", 95, 165), (14, "FLR", 211, 128), (15, "V2L", 99, 209), (16, "MBR", 209, 95),
+    (17, "V1L", 76, 223), (18, "V1R", 210, 223), (19, "MFL", 96, 113), (20, "RSR", 162, 183),
+    (21, "ACL", 140, 92), (22, "ACR", 146, 92),
+)
+
+
 def _roi_table(roi_labels: Path | None) -> pd.DataFrame:
-    default = Path(__file__).resolve().parent / "roi_table.csv"
-    return pd.read_csv(roi_labels if roi_labels and Path(roi_labels).exists() else default)
+    """Label and position of every ROI: a table given as ``roi_labels`` (columns index, label, x, y)
+    or the built-in layout."""
+    if roi_labels and Path(roi_labels).exists():
+        return pd.read_csv(roi_labels)
+    return pd.DataFrame(ROI_LAYOUT, columns=["index", "label", "x", "y"])
 
 
 def plot_roi_attention_summary(run_dir: str | Path, *, top_k: int = 8, roi_labels: Path | None = None) -> Path:
@@ -256,7 +271,8 @@ def plot_roi_attention_summary(run_dir: str | Path, *, top_k: int = 8, roi_label
         seizure) in the same lollipop style; (d) recovery-minus-baseline interaction
         contrast with the top-10% readout-weighted edges (edge color: signed contrast,
         edge width: score; node size: cross-fold mean readout weight).
-    ROI names and node positions come from ``roi_table.csv`` (index, label, x, y).
+    ROI names and node positions come from the built-in ``ROI_LAYOUT`` or from a table given as
+    ``roi_labels`` (columns index, label, x, y).
     """
     run_dir = Path(run_dir)
     interp = run_dir / "interpretability"

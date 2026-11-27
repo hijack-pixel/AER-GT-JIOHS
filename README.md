@@ -8,9 +8,9 @@ The private animal data are not included. The repository is organized so that th
 
 ## Manuscript-to-code map
 
-| Manuscript item | Code |
+| Manuscript section | Code |
 |---|---|
-| Sec. 2.1 Animals, recordings, and reference labels (Table 1, Table 5) | specification tables under `preprocess/spec/`; `scripts/supplementary_analyses/state_timeline_figure.py` |
+| Sec. 2.1 Animals, recordings, and reference labels (Table 1, Table 5) | specification tables described in `preprocess/spec/README.md`; `scripts/supplementary_analyses/state_timeline_figure.py` |
 | Sec. 2.2 ROI-wise graph construction (Fig. 2) | `preprocess/matlab/` |
 | Sec. 2.3 State-wise characterization (Fig. 4) | `preprocess/fig4/` |
 | Sec. 2.4-2.6 AER-GT, two-stage training, subject-level five-fold cross-validation | `src/aergt/`, `scripts/train_full_model.py`, `scripts/run_inference.py`, `configs/full_model.yaml` |
@@ -32,10 +32,10 @@ scripts/                    Command-line entry points
 scripts/supplementary_analyses/  Supplementary analyses beyond the main pipeline
 preprocess/matlab/          MATLAB raw TIFF-to-graph preprocessing
 preprocess/fig4/            MATLAB analysis behind Fig. 4
-preprocess/spec/            Placeholder tables of animals, recordings, and Fig. 4 recordings
-data/private/               Expected location of the private processed samples; ignored by git
+preprocess/spec/            Column definitions of the animal and recording specification tables
+data/private/               Expected location of the processed samples and specification tables; ignored by git
 model_artifacts/paper_trained/  Checkpoints and scalers of the trained model
-docs/                       Data format, reproduction steps, server setup, and release boundaries
+docs/                       Data format, reproduction steps, demo, and server setup
 outputs/                    Generated results; ignored by git
 tests/                      Smoke tests that need no private data
 ```
@@ -84,4 +84,4 @@ python scripts/run_inference.py --config configs/paper_trained_inference.yaml
 
 ## Data availability
 
-The raw and processed IOS datasets are private animal experimental data and are not committed to this repository. See `CODE_AND_DATA_AVAILABILITY.md`, `docs/DATA_FORMAT.md`, and `docs/PRIVATE_DATA_NOTE.md`. `docs/RELEASE_BOUNDARIES.md` lists what is and is not versioned.
+The raw and processed IOS datasets are not included in this repository and are available from the corresponding author on request; see `CODE_AND_DATA_AVAILABILITY.md` and `docs/DATA_FORMAT.md`.

@@ -4,7 +4,9 @@ Links the per-window frame-difference motion index to the out-of-fold decoding
 outputs of a run:
 
 (a) Spearman correlation between the motion index and the predicted
-    baseline-class probability, overall and within each true state;
+    baseline-class probability: pooled over all windows (descriptive) and
+    within each animal, for all windows and within each true state. Windows
+    of a recording overlap, so no window-level p value is reported;
 (b) median motion of correctly and incorrectly decoded windows by true state,
     and the state composition of the incorrectly decoded windows;
 (c) baseline-versus-recovery decoding accuracy by motion quintile, including
@@ -44,7 +46,8 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from scipy.stats import spearmanr  # noqa: E402
 
-from _common import ROOT, class_names, evaluation_dir, load_run_config, read_oof_predictions, resolve_path  # noqa: E402
+from _common import (ROOT, class_names, display_map, evaluation_dir, load_run_config, read_oof_predictions,  # noqa: E402
+                     resolve_path)
 
 
 def main() -> None:
@@ -81,12 +84,27 @@ def main() -> None:
     lines = [f"windows joined: {len(df)}"]
 
     # ---------- (a) motion vs predicted baseline probability ----------
+    # Windows of a recording overlap, so no window-level p value is reported: the
+    # correlation is given pooled over all windows (descriptive) and within each
+    # animal, for all windows and within each true state.
+    names = display_map(df["mouse_id"])
+    df["animal"] = df["mouse_id"].map(names)
     rows = []
-    lines += ["", "(a) Spearman correlation: motion index vs predicted baseline-class probability"]
-    for scope, sub in [("all", df)] + [(state, df[df["state"] == state.capitalize()]) for state in states]:
-        rho, p = spearmanr(sub["motion_diff"], sub["p_baseline"])
-        rows.append({"scope": scope, "n": len(sub), "rho": float(rho), "p": float(p)})
-        lines.append(f"  {scope:9s} n={len(sub):4d}  rho={rho:+.3f}  p={p:.3g}")
+    rho = float(spearmanr(df["motion_diff"], df["p_baseline"])[0])
+    rows.append({"scope": "all", "animal": "", "n": len(df), "rho": rho})
+    lines += ["", "(a) Spearman correlation: motion index vs predicted baseline-class probability",
+              f"  pooled over all windows (descriptive): n={len(df)}  rho={rho:+.3f}"]
+    for scope, frame in [("all", df)] + [(state, df[df["state"] == state.capitalize()]) for state in states]:
+        values = []
+        for animal, sub in frame.groupby("animal"):
+            if len(sub) > 2 and sub["motion_diff"].nunique() > 1 and sub["p_baseline"].nunique() > 1:
+                value = float(spearmanr(sub["motion_diff"], sub["p_baseline"])[0])
+                values.append(value)
+                rows.append({"scope": scope, "animal": animal, "n": len(sub), "rho": value})
+        if values:
+            lines.append(f"  within {scope:9s}: rho per animal {min(values):+.3f} to {max(values):+.3f}, "
+                         f"median {float(np.median(values)):+.3f} "
+                         f"({sum(value < 0 for value in values)} of {len(values)} negative)")
     pd.DataFrame(rows).to_csv(out / "motion_vs_baseline_probability.csv", index=False)
 
     # ---------- (b) motion of correctly and incorrectly decoded windows ----------

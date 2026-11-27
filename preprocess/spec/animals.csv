@@ -1,4 +1,0 @@
-cohort,animal,folder,landmark1_x,landmark1_y,landmark2_x,landmark2_y
-labeled,ANIMAL_ID,SUBFOLDER_OF_RAW_EPILEPSY_ROOT,,,,
-pretrain,ANIMAL_ID,SUBFOLDER_OF_RAW_PRETRAIN_ROOT,,,,
-control,ANIMAL_ID,SUBFOLDER_OF_RAW_CONTROL_ROOT,,,,

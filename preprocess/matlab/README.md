@@ -4,7 +4,7 @@ This folder converts raw widefield IOS TIFF recordings into the AER-GT graph sam
 
 ## Specification tables
 
-The code contains no animal-specific values. Animals and recordings are listed in three CSV tables under [`preprocess/spec/`](../spec), which hold placeholder rows as shipped:
+Animals and recordings are listed in three CSV tables that describe the dataset (column definitions in [spec/README.md](../spec/README.md)). Create them for your data, for example under `data/private/spec/`:
 
 | Table | Columns | Content |
 |---|---|---|
@@ -16,7 +16,7 @@ The code contains no animal-specific values. Animals and recordings are listed i
 
 ## Run
 
-Fill copies of the tables, set the raw-data roots, and run:
+Create the tables, set the raw-data roots, and run:
 
 ```matlab
 addpath('preprocess/matlab')
@@ -56,4 +56,4 @@ ROI order is fixed by `aergt_default_roi_labels.m` and must not be changed witho
 
 ## Quality reports
 
-Optional per-animal quality figures are disabled by default (`cfg.output.write_quality_reports = false`). When enabled they are written to `outputs/preprocess_quality/`, which is not versioned.
+Optional per-animal quality figures are disabled by default (`cfg.output.write_quality_reports = false`). When enabled they are written to `outputs/preprocess_quality/`, which is ignored by git.

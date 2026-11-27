@@ -2,7 +2,7 @@
 
 This folder contains the numerical analysis behind Fig. 4 (Sec. 2.3): state-wise IOS signal features and inter-ROI network organization, with the animal-level statistics.
 
-It stores no generated figures. Running the entry below writes the metrics to `outputs/fig4_ios_state_analysis/`.
+Running the entry below writes the metrics to `outputs/fig4_ios_state_analysis/`.
 
 ```matlab
 addpath('preprocess/matlab')
@@ -22,4 +22,4 @@ run_fig4_ios_state_analysis(cfg)
 
 With one segment per state, each animal contributes one observation per state, so all statistics are evaluated at the animal level (`compute_fig4_animal_level_stats.m`): Friedman omnibus tests with Kendall's W, followed by pairwise Wilcoxon signed-rank tests with Holm correction across the three state pairs.
 
-The segment-position sensitivity analysis of these statistics is provided by `scripts/supplementary_analyses/segment_position_sensitivity.py`.
+The recording-position sensitivity analysis of these statistics (blocks of consecutive windows) is provided by `scripts/supplementary_analyses/segment_position_sensitivity.py`.

@@ -98,4 +98,4 @@ python scripts/supplementary_analyses/time_negative_control_figures.py --config 
 
 ## 12. Supplementary analyses
 
-The per-animal performance table (Table 4), the recording timeline behind Table 5, the seed and lambda reruns, the segment-position sensitivity analysis, the readout-masking concordance, and further supplementary analyses are described in `scripts/supplementary_analyses/README.md`.
+The per-animal performance table (Table 4), the recording timeline behind Table 5, the seed and lambda reruns, the recording-position sensitivity analysis, the readout-masking concordance, and further supplementary analyses are described in `scripts/supplementary_analyses/README.md`.

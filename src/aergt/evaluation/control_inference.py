@@ -31,7 +31,7 @@ from aergt.utils.runtime import write_json
 
 
 def load_control_samples(control_dir: str | Path, *, num_nodes: int, in_channels: int, use_abs_adj: bool) -> list[GraphSample]:
-    """Load preprocessed control ``.mat`` samples (their labels are placeholders)."""
+    """Load preprocessed control ``.mat`` samples (exported with ``Label = -1``)."""
     control_dir = Path(control_dir)
     samples: list[GraphSample] = []
     skipped = 0

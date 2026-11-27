@@ -49,9 +49,9 @@ if isempty(animals)
     error('aergt_read_recording_table:NoRecordings', ...
         'No %s recordings are listed in %s.', cohort, cfg.spec.recordings);
 end
-if any(files == "") || any(startsWith(files, "RECORDING_FILE")) || any(startsWith(files, "CHUNK_FILE"))
-    error('aergt_read_recording_table:Placeholder', ...
-        '%s still contains placeholder rows; list the %s recordings.', cfg.spec.recordings, cohort);
+if any(files == "")
+    error('aergt_read_recording_table:EmptyEntry', ...
+        'Every row of %s needs a TIFF file name.', cfg.spec.recordings);
 end
 known = string({Animals.Name});
 listed = unique(animals);
@@ -78,11 +78,11 @@ for a = 1:numel(Animals)
         else
             label_id = -1;
         end
-        entries{end + 1} = struct( ... %#ok<AGROW>
-            'Animal', Animals(a).Name, ...
-            'Recording', char(ids(r)), ...
-            'Files', cellstr(files(idx)), ...
-            'Label', label_id);
+        % the file list is assigned after struct(): a cell argument would expand
+        % the struct into one element per file
+        entry = struct('Animal', Animals(a).Name, 'Recording', char(ids(r)), 'Label', label_id);
+        entry.Files = cellstr(files(idx));
+        entries{end + 1} = entry; %#ok<AGROW>
     end
 end
 Recordings = [entries{:}];

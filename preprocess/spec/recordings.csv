@@ -1,5 +1,0 @@
-cohort,animal,recording,file,order,label
-labeled,ANIMAL_ID,,RECORDING_FILE.tif,1,baseline
-pretrain,ANIMAL_ID,RECORDING_GROUP,CHUNK_FILE.tif,1,
-pretrain,ANIMAL_ID,RECORDING_GROUP,CHUNK_FILE.tif,2,
-control,ANIMAL_ID,RECORDING_GROUP,RECORDING_FILE.tif,1,

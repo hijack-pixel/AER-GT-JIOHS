@@ -24,7 +24,7 @@ data/private/control_pharmacological/*.mat        unlabeled samples of the pharm
 
 ## Generating the folders
 
-The MATLAB exporters convert raw TIFF recordings into these samples. Animals, recordings, and labels are listed in the specification tables of `preprocess/spec/`:
+The MATLAB exporters convert raw TIFF recordings into these samples. Animals, recordings, and labels are listed in three specification tables that you create for your dataset (columns in `preprocess/spec/README.md`):
 
 ```matlab
 addpath('preprocess/matlab')

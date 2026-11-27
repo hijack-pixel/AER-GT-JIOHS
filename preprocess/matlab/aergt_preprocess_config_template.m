@@ -1,11 +1,11 @@
 function cfg = aergt_preprocess_config_template()
 %AERGT_PREPROCESS_CONFIG_TEMPLATE Return default preprocessing configuration.
 %
-% For a private-data run, set the three raw-data roots and point cfg.spec.* at
-% copies of the specification tables in preprocess/spec/ that list your animals
-% (folders and registration landmarks) and recordings (files, chunk order, and
-% reference labels). The default output paths are under data/private/ and are
-% excluded by .gitignore.
+% For a run on your own data, set the three raw-data roots and create the three
+% specification tables that list your animals (folders and registration
+% landmarks) and recordings (files, chunk order, and reference labels); their
+% columns are described in preprocess/spec/README.md. The default paths for the
+% tables and outputs are under data/private/, which is excluded by .gitignore.
 
 this_file = mfilename('fullpath');
 matlab_dir = fileparts(this_file);
@@ -20,9 +20,9 @@ cfg.raw.pretrain_root = fullfile(repo_root, 'data', 'private', 'raw_pretrain');
 cfg.raw.control_root = fullfile(repo_root, 'data', 'private', 'raw_control');
 
 cfg.spec = struct();
-cfg.spec.animals = fullfile(preprocess_dir, 'spec', 'animals.csv');
-cfg.spec.recordings = fullfile(preprocess_dir, 'spec', 'recordings.csv');
-cfg.spec.fig4_state_recordings = fullfile(preprocess_dir, 'spec', 'fig4_state_recordings.csv');
+cfg.spec.animals = fullfile(repo_root, 'data', 'private', 'spec', 'animals.csv');
+cfg.spec.recordings = fullfile(repo_root, 'data', 'private', 'spec', 'recordings.csv');
+cfg.spec.fig4_state_recordings = fullfile(repo_root, 'data', 'private', 'spec', 'fig4_state_recordings.csv');
 
 cfg.output = struct();
 cfg.output.labeled_dir = fullfile(repo_root, 'data', 'private', 'labeled_epilepsy');

@@ -1,6 +1,6 @@
 # CUDA Server Setup
 
-The model pipeline runs on CPU or CUDA devices and contains no local paths.
+The model pipeline runs on CPU or CUDA devices.
 
 Recommended environment:
 
@@ -25,9 +25,7 @@ The full-model configuration (`configs/full_model.yaml`) uses the settings of th
 - `training.pretrain_batch_size: 64`
 - `training.finetune_batch_size: 32`
 
-Changing the batch sizes changes the optimization and therefore the results.
-
-Expected private data layout on the server:
+Data layout on the server:
 
 ```text
 data/private/pretrain_normative_baseline/*.mat

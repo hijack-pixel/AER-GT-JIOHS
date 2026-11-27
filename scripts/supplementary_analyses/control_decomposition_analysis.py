@@ -16,10 +16,9 @@ Two analyses of the seizure-free pilocarpine control cohort:
     the mean correlation matrix of its earliest recording. Control windows are
     split by their assigned class, and four groups (ictal recovery, ictal
     baseline, control windows assigned to recovery, control windows assigned to
-    baseline) are compared with two-sided Mann-Whitney U tests. The tests are
-    run on pooled windows; overlapping windows of a recording are not
-    independent, so the p values are descriptive and are not used for
-    inference.
+    baseline) are summarised by their median and quartiles. Windows of a
+    recording overlap and the control cohort has few animals, so the groups
+    are compared descriptively.
 
 Usage:
     python scripts/supplementary_analyses/control_decomposition_analysis.py \
@@ -55,7 +54,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
-from scipy.stats import mannwhitneyu  # noqa: E402
 
 from _common import ROOT, display_map, load_run_config, read_recording_times, resolve_path  # noqa: E402
 
@@ -173,12 +171,6 @@ def main() -> None:
          "q75": float(np.percentile(values, 75)) if values.size else np.nan}
         for name, values in groups])
 
-    def p_value(a: np.ndarray, b: np.ndarray) -> float:
-        return float(mannwhitneyu(a, b, alternative="two-sided").pvalue) if a.size and b.size else float("nan")
-
-    p_internal = p_value(control_assigned["recovery"], control_assigned["baseline"])
-    p_vs_ictal = p_value(control_assigned["recovery"], ictal["recovery"])
-
     out = ROOT / args.out
     out.mkdir(parents=True, exist_ok=True)
     table.to_csv(out / "decomposition_table.csv", index=False)
@@ -219,8 +211,6 @@ def main() -> None:
         print(f"  {label_of(animal_id):8s} {t_first:g} min: {share_first:5.1f}%   {t_last:g} min: {share_last:5.1f}%")
     print()
     print(deviation_table.to_string(index=False))
-    print(f"\ncontrol to recovery vs control to baseline: Mann-Whitney p = {p_internal:.3f}")
-    print(f"control to recovery vs ictal recovery:       Mann-Whitney p = {p_vs_ictal:.3e}")
     print(f"\nsaved -> {out.relative_to(ROOT)}")
 
 

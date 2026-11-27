@@ -167,10 +167,9 @@ Animals = aergt_read_animal_table(cfg, 'labeled');
 
 names = strtrim(string(T.animal));
 files = [strtrim(string(T.baseline_file)), strtrim(string(T.seizure_file)), strtrim(string(T.recovery_file))];
-if any(names == "") || any(startsWith(names, "ANIMAL_ID")) || ...
-        any(files == "") || any(contains(files, "RECORDING"))
-    error('compute_fig4_ios_state_metrics:Placeholder', ...
-        '%s still contains placeholder rows.', cfg.spec.fig4_state_recordings);
+if any(names == "") || any(files == "")
+    error('compute_fig4_ios_state_metrics:EmptyEntry', ...
+        'Every row of %s needs an animal identifier and three file names.', cfg.spec.fig4_state_recordings);
 end
 
 Mice = repmat(Animals(1), 1, height(T));

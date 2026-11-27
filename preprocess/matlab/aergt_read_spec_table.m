@@ -6,7 +6,7 @@ function T = aergt_read_spec_table(path)
 
 if ~exist(path, 'file')
     error('aergt_read_spec_table:MissingFile', ...
-        'Specification table not found: %s', path);
+        'Specification table not found: %s (columns listed in preprocess/spec/README.md)', path);
 end
 
 T = readtable(path, 'TextType', 'string', 'Delimiter', ',');
